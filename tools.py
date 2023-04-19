@@ -116,7 +116,7 @@ class Arguments:
         self.net_dim = 256  # the network width 256
         self.batch_size = 4096  # num of transitions sampled from replay buffer.
         self.repeat_times = 2 ** 5  # repeatedly update network to keep critic's loss small
-        self.target_step = 4096 # collect target_step experiences , then update network, 1024
+        self.target_step = 64 # collect target_step experiences , then update network, 1024
         self.max_memo = 500000  # capacity of replay buffer
         self.if_per_or_gae = False  # PER for off-policy sparse reward: Prioritized Experience Replay.
 

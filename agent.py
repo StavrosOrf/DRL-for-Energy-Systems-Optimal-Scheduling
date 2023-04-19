@@ -41,8 +41,11 @@ class AgentBase:
         state = self.state
         for _ in range(target_step):
             action = self.select_action(state)
+            # print(f'Action: {action}')
             
             state,next_state, reward, done, = env.step(action)
+            
+            # print(f'State: {state}, reward: {reward}, done: {done}')
 
             trajectory.append((state, (reward, done, *action)))
             state = env.reset() if done else next_state
