@@ -1,3 +1,6 @@
 
 trajectories_sh
 trajectories
+*.pyc
+wandb/
+*.pyc

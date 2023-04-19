@@ -308,19 +308,20 @@ def experiment(
         )
         # wandb.watch(model)  # wandb has some bug
 
-    Train = False
+    Train = True
+    error = 100000
 
     if Train:
         for iter in range(variant['max_iters']):
-            outputs = trainer.train_iteration(
-                num_steps=variant['num_steps_per_iter'], iter_num=iter+1, print_logs=True)
-            final_balance = (
-                float(outputs["evaluation/target_18000_return_mean"]))
+            outputs = trainer.train_iteration(num_steps=variant['num_steps_per_iter'], iter_num=iter+1, print_logs=True)
+            # print(outputs)
+            cur_error = ( float(outputs["training/action_error"]))
+            # final_balance = ( float(outputs["evaluation/target_18000_return_mean"]))
             # exit()
             if log_to_wandb:
                 wandb.log(outputs)
         
-            if final_balance > best_balance:
+            if final_balance > best_balance or error > cur_error :
                 torch.save(model, "model.pt")
                 best_balance = final_balance
 
