@@ -65,11 +65,11 @@ if __name__=='__main__':
         num_episode=args.num_episode
 
         ##
-        # args.train=False
+        args.train=False
         # args.save_network=False
         # args.test_network=False
         # args.save_test_data=False
-        # args.compare_with_pyomo=False
+        args.compare_with_pyomo=True
         #
         if args.train:
             collect_data=True
