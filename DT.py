@@ -310,6 +310,7 @@ def experiment(
 
     Train = True
     error = 100000
+    final_balance = 0
 
     if Train:
         for iter in range(variant['max_iters']):
