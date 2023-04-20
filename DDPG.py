@@ -74,9 +74,9 @@ if __name__ == '__main__':
         num_episode = args.num_episode
 
         ##
-        args.train = True
+        args.train = False
         # args.save_network=False
-        # args.test_network=False
+        args.test_network = True
         # args.save_test_data=False
         args.compare_with_pyomo = True
         #

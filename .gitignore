@@ -4,3 +4,5 @@ trajectories
 *.pyc
 wandb/
 *.pyc
+__pycache__/
+.idea/

@@ -13,41 +13,6 @@ from decision_transformer.models.mlp_bc import MLPBCModel
 from decision_transformer.training.act_trainer import ActTrainer
 from decision_transformer.training.seq_trainer import SequenceTrainer
 
-# import gym
-# from gym import spaces
-
-# class BatteryChargingEnv(gym.Env):
-#   """Custom Environment that follows gym interface"""
-#   metadata = {'render.modes': ['human']}
-
-#   def __init__(self,render_mode=None):
-#     super(BatteryChargingEnv, self).__init__()
-#     # Define action and observation space
-#     # They must be gym.spaces objects
-#     # Example when using discrete actions:
-#     self.action_space = spaces.Discrete(3)
-
-#     self.observation_space = spaces.Dict(
-#         {
-#             "agent": spaces.Box(0, size - 1, shape=(2,), dtype=int),
-#             "target": spaces.Box(0, size - 1, shape=(2,), dtype=int),
-#         }
-#     )
-#     self.window = None
-#     self.clock = None
-
-#   def step(self, action):
-#     # Execute one time step within the environment
-#     ...
-
-#   def reset(self):
-#     # Reset the state of the environment to an initial state
-#     ...
-
-#   def render(self, mode='human', close=False):
-#     # Render the environment to the screen
-#     ...
-
 
 def discount_cumsum(x, gamma):
     discount_cumsum = np.zeros_like(x)
@@ -216,7 +181,7 @@ def experiment(
                         )
                     else:
                         ret, length = evaluate_episode(
-                            env,
+                            # env,
                             state_dim,
                             act_dim,
                             model,

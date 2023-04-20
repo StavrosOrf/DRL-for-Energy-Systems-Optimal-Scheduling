@@ -10,7 +10,7 @@ from torch.nn.modules import loss
 from random_generator_battery import ESSEnv
 import pandas as pd
 
-from tools import Arguments, get_episode_return, test_one_episode, ReplayBuffer, optimization_base_result
+from tools import Arguments, test_one_episode_DT, ReplayBuffer, optimization_base_result
 from agent import AgentDDPG
 from random_generator_battery import ESSEnv
 
@@ -125,12 +125,15 @@ if __name__ == '__main__':
 
     if args.test_network:
         args.cwd = agent_name
-        agent.act.load_state_dict(torch.load(act_save_path))
-        print('parameters have been reload and test')
-        record = test_one_episode(env, agent.act, agent.device)
+        # agent.act.load_state_dict(torch.load(act_save_path))
+        # print('parameters have been reload and test')        
+        record = test_one_episode_DT(env, agent.device)
+        # print(record['information'])
         eval_data = pd.DataFrame(record['information'])
         eval_data.columns = ['time_step', 'price', 'netload', 'action', 'real_action',
                              'soc', 'battery', 'gen1', 'gen2', 'gen3', 'unbalance', 'operation_cost']
+        eval_data.to_csv(f'{args.cwd}/eval_data.csv', index=False)
+        print(eval_data)
     if args.save_test_data:
         test_data_save_path = f'{args.cwd}/test_data.pkl'
         with open(test_data_save_path, 'wb') as tf:
@@ -143,6 +146,7 @@ if __name__ == '__main__':
         initial_soc = record['init_info'][0][3]
         print(initial_soc)
         base_result = optimization_base_result(env, month, day, initial_soc)
+
     if args.plot_on:
         from plotDRL import PlotArgs, make_dir, plot_evaluation_information, plot_optimization_result
         plot_args = PlotArgs()
