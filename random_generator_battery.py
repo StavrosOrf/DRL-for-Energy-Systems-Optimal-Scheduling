@@ -137,8 +137,8 @@ class ESSEnv(gym.Env):
         self.month=np.random.randint(1,13)# here we choose 12 month
         if self.TRAIN:
             self.day=np.random.randint(1,20)
-        else:
-            self.day=np.random.randint(20,Constant.MONTHS_LEN[self.month]-1)
+        else:            
+            self.day=np.random.randint(3,Constant.MONTHS_LEN[self.month-1]-1)
         self.current_time=0
         self.battery.reset()
         self.dg1.reset()

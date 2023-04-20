@@ -13,6 +13,8 @@ from decision_transformer.models.mlp_bc import MLPBCModel
 from decision_transformer.training.act_trainer import ActTrainer
 from decision_transformer.training.seq_trainer import SequenceTrainer
 
+from evaluate_DT import evaluate_one_episode
+
 
 def discount_cumsum(x, gamma):
     discount_cumsum = np.zeros_like(x)
@@ -34,7 +36,7 @@ def experiment(
     group_name = f'{exp_prefix}-{env_name}-normal'
     exp_prefix = f'{group_name}-{random.randint(int(1e5), int(1e6) - 1)}'
 
-    max_ep_len = 48
+    max_ep_len = 24
     env_targets = [18000]  # evaluation conditioning targets
     scale = 1000.  # normalization for rewards/returns
 
@@ -250,7 +252,7 @@ def experiment(
             scheduler=scheduler,
             loss_fn=lambda s_hat, a_hat, r_hat, s, a, r: torch.mean(
                 (a_hat - a)**2),
-            eval_fns=[eval_episodes(tar) for tar in env_targets],
+            eval_fns = evaluate_one_episode,
         )
     elif model_type == 'bc':
         trainer = ActTrainer(
@@ -310,7 +312,7 @@ if __name__ == '__main__':
     parser.add_argument('--dataset', type=str, default='medium')
     # normal for standard setting, delayed for sparse
     parser.add_argument('--mode', type=str, default='normal')
-    parser.add_argument('--K', type=int, default=48)
+    parser.add_argument('--K', type=int, default=24)
     parser.add_argument('--pct_traj', type=float, default=1.)
     parser.add_argument('--batch_size', type=int, default=100)
     # dt for decision transformer, bc for behavior cloning
@@ -324,7 +326,7 @@ if __name__ == '__main__':
     parser.add_argument('--weight_decay', '-wd', type=float, default=1e-4)
     parser.add_argument('--warmup_steps', type=int, default=10000)
     parser.add_argument('--num_eval_episodes', type=int, default=1)
-    parser.add_argument('--max_iters', type=int, default=500)
+    parser.add_argument('--max_iters', type=int, default=100)
     parser.add_argument('--num_steps_per_iter', type=int, default=50)
     parser.add_argument('--device', type=str, default='cuda')
     parser.add_argument('--log_to_wandb', '-w', type=bool, default=True)

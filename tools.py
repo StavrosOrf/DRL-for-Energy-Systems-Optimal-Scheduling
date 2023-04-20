@@ -49,6 +49,7 @@ def optimization_base_result(env, month, day, initial_soc):
     battery_efficiency = env.battery.efficiency
 
     m = gp.Model("UC")
+    m.Params.LogToConsole = 0
 
     # set variables in the system
     on_off = m.addVars(NUM_GEN, period, vtype=GRB.BINARY, name='on_off')
@@ -239,7 +240,7 @@ def test_one_episode(env, act, device):
     return record
 
 
-def test_one_episode_DT(env, device):
+def test_one_episode_DT(env, device,model=None):
     '''to get evaluate information, here record the unblance of after taking action'''
     record_state = []
     record_action = []
@@ -259,7 +260,7 @@ def test_one_episode_DT(env, device):
     parser.add_argument('--dataset', type=str, default='medium')
     # normal for standard setting, delayed for sparse
     parser.add_argument('--mode', type=str, default='normal')
-    parser.add_argument('--K', type=int, default=64)
+    parser.add_argument('--K', type=int, default=24)
     parser.add_argument('--pct_traj', type=float, default=1.)
     parser.add_argument('--batch_size', type=int, default=100)
     # dt for decision transformer, bc for behavior cloning
@@ -281,7 +282,7 @@ def test_one_episode_DT(env, device):
     args = parser.parse_args()
     variant = vars(args)
 
-    max_ep_len = 64
+    max_ep_len = 48
     state_dim = 7
     act_dim = 4
     K = variant['K']
@@ -300,8 +301,9 @@ def test_one_episode_DT(env, device):
         resid_pdrop=variant['dropout'],
         attn_pdrop=variant['dropout'],
     )
-    print("Loading model...")
-    model = torch.load("model.pt", map_location=torch.device('cpu'))
+    if model == None:
+        print("Loading model...")
+        model = torch.load("model.pt", map_location=torch.device('cpu'))
 
     # we keep all the histories on the device
     # note that the latest action and reward will be "padding"
@@ -326,7 +328,7 @@ def test_one_episode_DT(env, device):
     print(
         f'current testing month is {env.month}, day is {env.day},initial_soc is {env.battery.current_capacity}')
     for i in range(24):
-        print(f'current time is {i}')
+        # print(f'current time is {i}')
 
         cur_state = torch.as_tensor(state).to(
             device=device).reshape(1, state_dim)

@@ -8,6 +8,7 @@ import os
 from tools import Arguments
 import matplotlib
 matplotlib.rc('text', usetex=True)
+matplotlib.rcParams.update(matplotlib.rcParamsDefault)
 pd.options.display.notebook_repr_html=False  
 
 def plot_evaluation_information(datasource,directory):
@@ -151,7 +152,8 @@ def plot_optimization_result(datasource, directory):  # data source is dataframe
     # plt.show()
     # plt.close()
     fig.savefig(f"{directory}/optimization_information.svg", format='svg', dpi=600, bbox_inches='tight')
-    print('optimization result has been ploted')
+    # print('optimization result has been ploted')
+    
 def smooth(data, sm=5):
         if sm > 1:
             smooth_data = []

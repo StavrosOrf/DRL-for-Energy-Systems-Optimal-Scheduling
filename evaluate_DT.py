@@ -30,7 +30,61 @@ def update_buffer(_trajectory):
     return _steps, _r_exp
 
 
+def evaluate_one_episode(model=None):
+
+    args = Arguments()
+    agent_name = "DT"
+    args.env = ESSEnv()
+    args.cwd = agent_name
+    # agent.act.load_state_dict(torch.load(act_save_path))
+    # print('parameters have been reload and test')
+    record = test_one_episode_DT(args.env, "cpu", model)
+    # print(record['information'])
+    eval_data = pd.DataFrame(record['information'])
+    eval_data.columns = ['time_step', 'price', 'netload', 'action', 'real_action',
+                         'soc', 'battery', 'gen1', 'gen2', 'gen3', 'unbalance', 'operation_cost']
+    eval_data.to_csv(f'{args.cwd}/eval_data.csv', index=False)
+    # print(eval_data)
+
+    '''compare with pyomo data and results'''
+    if args.compare_with_pyomo:
+        month = record['init_info'][0][0]
+        day = record['init_info'][0][1]
+        initial_soc = record['init_info'][0][3]
+        # print(initial_soc)
+        base_result = optimization_base_result(
+            args.env, month, day, initial_soc)
+        # print(base_result)
+
+    if args.save_test_data:
+        test_data_save_path = f'{args.cwd}/test_data.pkl'
+        with open(test_data_save_path, 'wb') as tf:
+            pickle.dump(record, tf)
+
+    if args.plot_on:
+        from plotDRL import PlotArgs, make_dir, plot_evaluation_information, plot_optimization_result
+        plot_args = PlotArgs()
+        plot_args.feature_change = ''
+        args.cwd = agent_name
+        plot_dir = make_dir(args.cwd, plot_args.feature_change)
+        plot_optimization_result(base_result, plot_dir)
+        plot_evaluation_information(args.cwd + '/'+'test_data.pkl', plot_dir)
+
+    '''compare the different cost get from pyomo and DT'''
+    ratio = sum(eval_data['operation_cost'])/sum(base_result['step_cost'])
+    ratio_unbalance = sum(eval_data['unbalance'])/sum(base_result['step_cost'])
+    print(sum(eval_data['operation_cost']), sum(eval_data['unbalance']))
+    print(sum(base_result['step_cost']), sum(base_result['step_cost']))
+    print(ratio)
+
+    return {"ratio": ratio, "ratio_unbalance": ratio_unbalance}
+
+
 if __name__ == '__main__':
+
+    evaluate_one_episode()
+    exit()
+
     args = Arguments()
     '''here record real unbalance'''
     reward_record = {'episode': [], 'steps': [],
@@ -51,8 +105,10 @@ if __name__ == '__main__':
         '''init agent and environment'''
         agent = args.agent
         env = args.env
-        agent.init(args.net_dim, env.state_space.shape[0], env.action_space.shape[0], args.learning_rate, args.if_per_or_gae)
-        print(f'state_dim:{env.state_space.shape[0]},action_dim:{env.action_space.shape[0]}')
+        agent.init(
+            args.net_dim, env.state_space.shape[0], env.action_space.shape[0], args.learning_rate, args.if_per_or_gae)
+        print(
+            f'state_dim:{env.state_space.shape[0]},action_dim:{env.action_space.shape[0]}')
 
         '''init replay buffer'''
         buffer = ReplayBuffer(max_len=args.max_memo, state_dim=env.state_space.shape[0],
@@ -77,7 +133,7 @@ if __name__ == '__main__':
         ##
         # args.save_network=False
         args.test_network = True
-        # args.save_test_data=False
+        args.save_test_data = True
         args.compare_with_pyomo = True
         #
 
@@ -85,15 +141,15 @@ if __name__ == '__main__':
 
         trajectory_list = []
         counter = 0
-        
+
         while generate_trajectories:
-        
+
             print(f'counter:{counter}')
             with torch.no_grad():
                 trajectory = agent.explore_env(env, target_step)
 
                 trajectory_i = {"observations": [],
-                    "actions": [], "rewards": [], "dones": []}
+                                "actions": [], "rewards": [], "dones": []}
 
                 for state_s in trajectory:
                     trajectory_i["observations"].append(state_s[0])
@@ -102,7 +158,7 @@ if __name__ == '__main__':
                     trajectory_i["dones"].append(state_s[1][1])
 
                 trajectory_i["observations"] = np.array(
-                trajectory_i["observations"])
+                    trajectory_i["observations"])
                 trajectory_i["actions"] = np.array(trajectory_i["actions"])
                 trajectory_i["rewards"] = np.array(trajectory_i["rewards"])
                 trajectory_i["dones"] = np.array(trajectory_i["dones"])
@@ -121,12 +177,11 @@ if __name__ == '__main__':
                 pickle.dump(trajectory_list, f)
                 f.close()
                 exit(0)
-                        
 
     if args.test_network:
         args.cwd = agent_name
         # agent.act.load_state_dict(torch.load(act_save_path))
-        # print('parameters have been reload and test')        
+        # print('parameters have been reload and test')
         record = test_one_episode_DT(env, agent.device)
         # print(record['information'])
         eval_data = pd.DataFrame(record['information'])
@@ -155,7 +210,8 @@ if __name__ == '__main__':
         plot_dir = make_dir(args.cwd, plot_args.feature_change)
         plot_optimization_result(base_result, plot_dir)
         plot_evaluation_information(args.cwd+'/'+'test_data.pkl', plot_dir)
-    '''compare the different cost get from pyomo and SAC'''
+
+    '''compare the different cost get from pyomo and DT'''
     ration = sum(eval_data['operation_cost'])/sum(base_result['step_cost'])
     print(sum(eval_data['operation_cost']))
     print(sum(base_result['step_cost']))

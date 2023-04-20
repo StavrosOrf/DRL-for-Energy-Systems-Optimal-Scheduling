@@ -36,11 +36,12 @@ class Trainer:
 
         eval_start = time.time()
 
-        # self.model.eval()
-        # for eval_fn in self.eval_fns:
-        #     outputs = eval_fn(self.model)
-        #     for k, v in outputs.items():
-        #         logs[f'evaluation/{k}'] = v
+        self.model.eval()
+        
+        outputs = self.eval_fns(self.model)
+        for k, v in outputs.items():
+            logs[f'evaluation/{k}'] = v
+        
 
         logs['time/total'] = time.time() - self.start_time
         logs['time/evaluation'] = time.time() - eval_start
