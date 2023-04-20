@@ -73,17 +73,14 @@ def evaluate_one_episode(model=None):
     '''compare the different cost get from pyomo and DT'''
     ratio = sum(eval_data['operation_cost'])/sum(base_result['step_cost'])
     ratio_unbalance = sum(eval_data['unbalance'])/sum(base_result['step_cost'])
-    print(sum(eval_data['operation_cost']), sum(eval_data['unbalance']))
-    print(sum(base_result['step_cost']), sum(base_result['step_cost']))
-    print(ratio)
+    # print(sum(eval_data['operation_cost']), sum(eval_data['unbalance']))
+    # print(sum(base_result['step_cost']), sum(base_result['step_cost']))
+    # print(ratio)
 
-    return {"ratio": ratio, "ratio_unbalance": ratio_unbalance}
+    return {"ratio": ratio, "ratio_unbalance": ratio_unbalance, "unbalance": sum(eval_data['unbalance']), "operation_cost": sum(eval_data['operation_cost']), "base_cost": sum(base_result['step_cost'])}
 
 
 if __name__ == '__main__':
-
-    evaluate_one_episode()
-    exit()
 
     args = Arguments()
     '''here record real unbalance'''

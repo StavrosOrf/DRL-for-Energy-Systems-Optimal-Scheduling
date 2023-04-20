@@ -81,7 +81,7 @@ def plot_evaluation_information(datasource,directory):
     # plt.show()
     # plt.close()
     fig.savefig(f"{directory}/Evoluation Information.svg", format='svg', dpi=600, bbox_inches='tight')
-    print('the evaluation figure have been plot and saved')
+    # print('the evaluation figure have been plot and saved')
 def make_dir(directory,feature_change):
     cwd=f'{directory}/DRL_{feature_change}_plots'
     os.makedirs(cwd,exist_ok=True)
@@ -153,7 +153,7 @@ def plot_optimization_result(datasource, directory):  # data source is dataframe
     # plt.close()
     fig.savefig(f"{directory}/optimization_information.svg", format='svg', dpi=600, bbox_inches='tight')
     # print('optimization result has been ploted')
-    
+
 def smooth(data, sm=5):
         if sm > 1:
             smooth_data = []

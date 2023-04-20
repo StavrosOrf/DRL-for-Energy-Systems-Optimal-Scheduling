@@ -277,7 +277,7 @@ def experiment(
 
     Train = True
     error = 100000
-    final_balance = 0
+    best_ratio = 10000
 
     if Train:
         for iter in range(variant['max_iters']):
@@ -289,7 +289,7 @@ def experiment(
             if log_to_wandb:
                 wandb.log(outputs)
         
-            if final_balance > best_balance or error > cur_error :
+            if error > cur_error :
                 torch.save(model, "model.pt")
                 best_balance = final_balance
 
@@ -326,7 +326,7 @@ if __name__ == '__main__':
     parser.add_argument('--weight_decay', '-wd', type=float, default=1e-4)
     parser.add_argument('--warmup_steps', type=int, default=10000)
     parser.add_argument('--num_eval_episodes', type=int, default=1)
-    parser.add_argument('--max_iters', type=int, default=100)
+    parser.add_argument('--max_iters', type=int, default=200)
     parser.add_argument('--num_steps_per_iter', type=int, default=50)
     parser.add_argument('--device', type=str, default='cuda')
     parser.add_argument('--log_to_wandb', '-w', type=bool, default=True)
