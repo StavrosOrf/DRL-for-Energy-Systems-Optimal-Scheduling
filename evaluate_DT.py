@@ -134,14 +134,14 @@ if __name__ == '__main__':
         args.compare_with_pyomo = True
         #
 
-        generate_trajectories = False
+        generate_trajectories = True
 
         trajectory_list = []
         counter = 0
 
         while generate_trajectories:
 
-            print(f'counter:{counter}')
+            # print(f'counter:{counter}')
             with torch.no_grad():
                 trajectory = agent.explore_env(env, target_step)
 
@@ -164,8 +164,16 @@ if __name__ == '__main__':
 
                 # print(buffer.now_len)
                 counter += 1
-            if counter > 10000:
+                if counter % 10000 == 0:
+                    print(f'counter:{counter}')
+                    f = open('trajectories_sh', 'wb')
+                    # source, destination
+                    pickle.dump(trajectory_list, f)
+                    f.close()
+
+            if counter > 1000000:
                 print("====================================")
+                # print(trajectory_list)
                 print(len(trajectory_list))
                 print('Finished trajectory generating!')
 

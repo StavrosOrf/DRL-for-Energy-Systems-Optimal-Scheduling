@@ -299,14 +299,14 @@ def experiment(
 
             print("Best balance: ", best_balance)
 
-    print("Loading model...")
-    model = torch.load("model.pt")
-    model.eval()
-    evaluator_fn = eval_episodes(18000)
-    outputs = evaluator_fn(model)
-    print(outputs)
-    # for k, v in outputs.items():
-    #     logs[f'evaluation/{k}'] = v
+    # print("Loading model...")
+    # model = torch.load("model.pt")
+    # model.eval()
+    # evaluator_fn = eval_episodes(18000)
+    # outputs = evaluator_fn(model)
+    # print(outputs)
+    # # for k, v in outputs.items():
+    # #     logs[f'evaluation/{k}'] = v
 
 
 if __name__ == '__main__':
