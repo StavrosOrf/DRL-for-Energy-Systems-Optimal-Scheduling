@@ -29,6 +29,9 @@ def experiment(
         variant,
 ):
     device = variant.get('device', 'cuda')
+
+    device = torch.device(device if torch.cuda.is_available() else 'cpu')
+
     log_to_wandb = variant.get('log_to_wandb', False)
 
     env_name = "Battery_Smart_Charge"
@@ -252,7 +255,7 @@ def experiment(
             scheduler=scheduler,
             loss_fn=lambda s_hat, a_hat, r_hat, s, a, r: torch.mean(
                 (a_hat - a)**2),
-            eval_fns = evaluate_one_episode,
+            eval_fns=evaluate_one_episode,
         )
     elif model_type == 'bc':
         trainer = ActTrainer(
@@ -281,17 +284,18 @@ def experiment(
 
     if Train:
         for iter in range(variant['max_iters']):
-            outputs = trainer.train_iteration(num_steps=variant['num_steps_per_iter'], iter_num=iter+1, print_logs=True)
+            outputs = trainer.train_iteration(
+                num_steps=variant['num_steps_per_iter'], iter_num=iter+1, print_logs=True)
             # print(outputs)
-            cur_error = ( float(outputs["training/action_error"]))
+            cur_error = (float(outputs["training/action_error"]))
             # final_balance = ( float(outputs["evaluation/target_18000_return_mean"]))
             # exit()
             if log_to_wandb:
                 wandb.log(outputs)
-        
-            if error > cur_error :
+
+            if error > cur_error:
                 torch.save(model, "model.pt")
-                best_balance = final_balance
+                error = cur_error
 
             print("Best balance: ", best_balance)
 
