@@ -151,7 +151,12 @@ if __name__ == '__main__':
                 for state_s in trajectory:
                     trajectory_i["observations"].append(state_s[0])
                     trajectory_i["actions"].append(state_s[1][2:6])
-                    trajectory_i["rewards"].append(state_s[1][0])
+
+                    reward_mode = 'return_to_go'
+                    if reward_mode == 'return_to_go':
+                        trajectory_i["rewards"].append(sum(trajectory_i["rewards"]) + state_s[1][0])
+                    else:
+                        trajectory_i["rewards"].append(state_s[1][0])
                     trajectory_i["dones"].append(state_s[1][1])
 
                 trajectory_i["observations"] = np.array(
@@ -166,14 +171,14 @@ if __name__ == '__main__':
                 counter += 1
                 if counter % 10000 == 0:
                     print(f'counter:{counter}')
-                    f = open('trajectories_sh', 'wb')
+                    f = open('trajectories_rtg', 'wb')
                     # source, destination
                     pickle.dump(trajectory_list, f)
                     f.close()
 
-            if counter > 1000000:
+            if counter > 100000:
                 print("====================================")
-                # print(trajectory_list)
+                print(trajectory_list[0])
                 print(len(trajectory_list))
                 print('Finished trajectory generating!')
 

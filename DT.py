@@ -6,6 +6,7 @@ import argparse
 import pickle
 import random
 import sys
+from icecream import ic
 
 from decision_transformer.evaluation.evaluate_episodes import evaluate_episode, evaluate_episode_rtg
 from decision_transformer.models.decision_transformer import DecisionTransformer
@@ -41,7 +42,7 @@ def experiment(
 
     max_ep_len = 24
     env_targets = [18000]  # evaluation conditioning targets
-    scale = 1000.  # normalization for rewards/returns
+    scale = 1.  # normalization for rewards/returns
 
     state_dim = 7
     act_dim = 4
@@ -53,6 +54,7 @@ def experiment(
 
     # save all path information into separate lists
     mode = variant.get('mode', 'normal')
+    # mode = 'delayed'
     states, traj_lens, returns = [], [], []
     for path in trajectories:
         if mode == 'delayed':  # delayed: all rewards moved to end of trajectory
@@ -62,6 +64,8 @@ def experiment(
         traj_lens.append(len(path['observations']))
         returns.append(path['rewards'].sum())
     traj_lens, returns = np.array(traj_lens), np.array(returns)
+
+    ic(traj_lens, returns)
 
     # used for input normalization
     states = np.concatenate(states, axis=0)
@@ -78,7 +82,6 @@ def experiment(
     print(f'Max return: {np.max(returns):.2f}, min: {np.min(returns):.2f}')
     print('=' * 50)
 
-    best_balance = -1
     K = variant['K']
     batch_size = variant['batch_size']
     num_eval_episodes = variant['num_eval_episodes']
@@ -282,10 +285,12 @@ def experiment(
     error = 100000
     best_ratio = 10000
 
+    num_steps_per_iter = int(len(traj_lens) / batch_size)
+
     if Train:
         for iter in range(variant['max_iters']):
             outputs = trainer.train_iteration(
-                num_steps=variant['num_steps_per_iter'], iter_num=iter+1, print_logs=True)
+                num_steps = num_steps_per_iter, iter_num=iter+1, print_logs=True)
             # print(outputs)
             cur_error = (float(outputs["training/action_error"]))
             # final_balance = ( float(outputs["evaluation/target_18000_return_mean"]))
@@ -297,7 +302,7 @@ def experiment(
                 torch.save(model, "model.pt")
                 error = cur_error
 
-            print("Best balance: ", best_balance)
+            print("Minimum error: ", error)
 
     # print("Loading model...")
     # model = torch.load("model.pt")
@@ -318,11 +323,11 @@ if __name__ == '__main__':
     parser.add_argument('--mode', type=str, default='normal')
     parser.add_argument('--K', type=int, default=24)
     parser.add_argument('--pct_traj', type=float, default=1.)
-    parser.add_argument('--batch_size', type=int, default=100)
+    parser.add_argument('--batch_size', type=int, default=256)
     # dt for decision transformer, bc for behavior cloning
     parser.add_argument('--model_type', type=str, default='dt')
     parser.add_argument('--embed_dim', type=int, default=256)
-    parser.add_argument('--n_layer', type=int, default=12)
+    parser.add_argument('--n_layer', type=int, default=8)
     parser.add_argument('--n_head', type=int, default=8)
     parser.add_argument('--activation_function', type=str, default='relu')
     parser.add_argument('--dropout', type=float, default=0.2)

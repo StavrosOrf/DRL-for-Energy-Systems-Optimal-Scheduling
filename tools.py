@@ -240,7 +240,7 @@ def test_one_episode(env, act, device):
     return record
 
 
-def test_one_episode_DT(env, device,model=None):
+def test_one_episode_DT(env, device, model=None):
     '''to get evaluate information, here record the unblance of after taking action'''
     record_state = []
     record_action = []
