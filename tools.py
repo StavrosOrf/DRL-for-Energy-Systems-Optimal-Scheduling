@@ -184,8 +184,8 @@ class Arguments:
                 print(f"| Remove cwd: {self.cwd}")
             os.makedirs(self.cwd, exist_ok=True)
 
-        np.random.seed(self.random_seed)
-        torch.manual_seed(self.random_seed)
+        # np.random.seed(self.random_seed)
+        # torch.manual_seed(self.random_seed)
         torch.set_num_threads(self.num_threads)
         torch.set_default_dtype(torch.float32)
 
@@ -325,8 +325,8 @@ def test_one_episode_DT(env, device, model=None):
 
     record_init_info.append(
         [env.month, env.day, env.current_time, env.battery.current_capacity])
-    print(
-        f'current testing month is {env.month}, day is {env.day},initial_soc is {env.battery.current_capacity}')
+    # print(
+        # f'current testing month is {env.month}, day is {env.day},initial_soc is {env.battery.current_capacity}')
     for i in range(24):
         # print(f'current time is {i}')
 
@@ -334,7 +334,8 @@ def test_one_episode_DT(env, device, model=None):
             device=device).reshape(1, state_dim)
         if i != 0:
             states = torch.cat([states, cur_state], dim=0)
-            rewards[-1] = torch.as_tensor(reward).to(device)
+            rewards[-1] = torch.as_tensor(reward).to(device) + \
+                torch.sum(rewards)
 
         # add padding
         actions = torch.cat([actions, torch.zeros(
