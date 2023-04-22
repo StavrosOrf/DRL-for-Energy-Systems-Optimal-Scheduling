@@ -10,6 +10,7 @@ __pycache__/
 decision_transformer/training/__pycache__/
 decision_transformer/evaluation/__pycache__/
 decision_transformer/models/__pycache__/
-DT/
-AgentDDPG/
+DT/*
+AgentDDPG/*
 
+trajectories_rtg

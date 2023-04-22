@@ -48,7 +48,7 @@ def experiment(
     act_dim = 4
 
     # load dataset
-    dataset_path = f'trajectories_rtg'
+    dataset_path = f'trajectories'
     with open(dataset_path, 'rb') as f:
         trajectories = pickle.load(f)
 
@@ -164,7 +164,9 @@ def experiment(
         timesteps = torch.from_numpy(np.concatenate(timesteps, axis=0)).to(
             dtype=torch.long, device=device)
         mask = torch.from_numpy(np.concatenate(mask, axis=0)).to(device=device)
-
+        
+        # ic(s, a, r, d, rtg, timesteps, mask)
+        # exit()
         return s, a, r, d, rtg, timesteps, mask
 
     def eval_episodes(target_rew):
@@ -326,7 +328,7 @@ if __name__ == '__main__':
     parser.add_argument('--batch_size', type=int, default=256)
     # dt for decision transformer, bc for behavior cloning
     parser.add_argument('--model_type', type=str, default='dt')
-    parser.add_argument('--embed_dim', type=int, default=256)
+    parser.add_argument('--embed_dim', type=int, default=512)
     parser.add_argument('--n_layer', type=int, default=8)
     parser.add_argument('--n_head', type=int, default=8)
     parser.add_argument('--activation_function', type=str, default='relu')

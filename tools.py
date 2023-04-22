@@ -326,7 +326,7 @@ def test_one_episode_DT(env, device, model=None):
     record_init_info.append(
         [env.month, env.day, env.current_time, env.battery.current_capacity])
     # print(
-        # f'current testing month is {env.month}, day is {env.day},initial_soc is {env.battery.current_capacity}')
+    # f'current testing month is {env.month}, day is {env.day},initial_soc is {env.battery.current_capacity}')
     for i in range(24):
         # print(f'current time is {i}')
 
@@ -375,6 +375,8 @@ def test_one_episode_DT(env, device, model=None):
         record_output.append(env.current_output)
         record_unbalance.append(env.unbalance)
         state = next_state
+
+    print(actions)
     record_system_info[-1][7:10] = [env.final_step_outputs[0],
                                     env.final_step_outputs[1], env.final_step_outputs[2]]
     # add information of last step soc
