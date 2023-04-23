@@ -1,188 +1,139 @@
-import numpy as np
-import pandas as pd
-import matplotlib.pyplot as plt
-import random
 import pickle
+import torch
+import torch.nn as nn
+import numpy as np
+import numpy.random as rd
+from torch.nn.modules import loss
+from random_generator_battery import ESSEnv
+from tqdm import tqdm
 
+from tools import Arguments, optimization_base_result
+from agent import AgentDDPG
+from random_generator_battery import ESSEnv
 
-def instantiate_environment():
-    # Set seed for reproducibility
-    np.random.seed(42)
+generate_trajectories = False
+MONTHS_LEN = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
 
-    # Set the number of data points to generate (48 points for 24 hours)
-    n_points = 48
+trajectory_list = []
+trajectories_number = 100000
+generate_optimal_trajectories = True
 
-    # Generate time axis
-    time_axis = pd.date_range(
-        start='2023-03-31 00:00:00', end='2023-03-31 23:59:00', freq='30min')
+if generate_optimal_trajectories:
+    file_name = 'optimal_trajectories'
+else:
+    file_name = 'random_trajectories'
 
-    # Generate the data for each dataset``
-    pv_generation = np.zeros(n_points)
-    for i in range(n_points):
-        if time_axis[i].hour >= 6 and time_axis[i].hour <= 18:
-            pv_generation[i] = np.random.normal(2500, 500)
+args = Arguments()
+args.agent = AgentDDPG()
+agent_name = f'{args.agent.__class__.__name__}'
+args.agent.cri_target = True
+args.env = ESSEnv()
+# creat lists of lists/or creat a long list?
+
+args.init_before_training(if_main=True)
+'''init agent and environment'''
+agent = args.agent
+env = args.env
+agent.init(
+    args.net_dim, env.state_space.shape[0], env.action_space.shape[0], args.learning_rate, args.if_per_or_gae)
+agent.state = env.reset()
+
+for counter in tqdm(range(trajectories_number)):    
+    with torch.no_grad():
+        if generate_optimal_trajectories:
+
+            month = np.random.randint(1, 13)  # here we choose 12 month
+            day = np.random.randint(1, MONTHS_LEN[month-1]-1)
+
+            initial_soc = round(np.random.uniform(0.2, 0.8), 2)
+            # print(f'month:{month}, day:{day}, initial_soc:{initial_soc}')
+
+            # print(initial_soc)
+            base_result = optimization_base_result(
+                env, month, day, initial_soc)
+
+            # base_result = base_result.iloc[i]
+            # extract actions
+            actions = []
+            for i in range(len(base_result)):
+                action = [0, 0, 0, 0]
+
+                if i == 0:
+                    action[0] = (base_result.iloc[i]['soc'] -
+                                 initial_soc) / (env.battery.max_charge / env.battery.capacity)
+                    action[1] = base_result.iloc[i]['gen1'] / \
+                        env.dg1.ramping_up
+                    action[2] = base_result.iloc[i]['gen2'] / \
+                        env.dg2.ramping_up
+                    action[3] = base_result.iloc[i]['gen3'] / \
+                        env.dg3.ramping_up
+                else:
+                    action[0] = (base_result.iloc[i]['soc'] -
+                                 base_result.iloc[i-1]['soc']) / (env.battery.max_charge / env.battery.capacity)
+                    action[1] = (base_result.iloc[i]['gen1'] -
+                                 base_result.iloc[i-1]['gen1']) / env.dg1.ramping_up
+                    action[2] = (base_result.iloc[i]['gen2'] -
+                                 base_result.iloc[i-1]['gen2']) / env.dg2.ramping_up
+                    action[3] = (base_result.iloc[i]['gen3'] -
+                                 base_result.iloc[i-1]['gen3']) / env.dg3.ramping_up
+
+                actions.append(action)
+
+            # print(base_result)
+            # for i in range(len(base_result)):
+            #     print(i, actions[i])
+
+            if np.max(actions) > 1.1 or np.min(actions) < -1.1:
+                print('action out of range!')
+                print(np.max(actions))
+                print(np.min(actions))
+                exit(0)
+
+            trajectory = agent.explore_env_opt_actions(
+                env, args.target_step, actions, day, month, initial_soc)
+
         else:
-            pv_generation[i] = np.random.normal(500, 100)
 
-    demand = np.zeros(n_points)
-    for i in range(n_points):
-        if time_axis[i].hour >= 6 and time_axis[i].hour <= 10:
-            demand[i] = np.random.normal(6000, 1000)
-        elif time_axis[i].hour >= 17 and time_axis[i].hour <= 22:
-            demand[i] = np.random.normal(8000, 1000)
-        else:
-            demand[i] = np.random.normal(4000, 1000)
+            trajectory = agent.explore_env(env, args.target_step)
 
-    price = np.zeros(n_points)
-    for i in range(n_points):
-        if time_axis[i].hour >= 6 and time_axis[i].hour <= 10:
-            price[i] = np.random.normal(50, 5)
-        elif time_axis[i].hour >= 17 and time_axis[i].hour <= 22:
-            price[i] = np.random.normal(70, 5)
-        else:
-            price[i] = np.random.normal(30, 5)
+        trajectory_i = {"observations": [],
+                        "actions": [], "rewards": [], "dones": []}
 
-    # Plot the data
-    # fig, ax = plt.subplots(3, 1, figsize=(16, 10))
+        for state_s in trajectory:
+            trajectory_i["observations"].append(state_s[0])
+            trajectory_i["actions"].append(state_s[1][2:6])
 
-    # ax[0].plot(time_axis, pv_generation, color='red')
-    # ax[0].set_ylabel('PV Generation')
-
-    # ax[1].plot(time_axis, demand, color='blue')
-    # ax[1].set_ylabel('Demand')
-
-    # ax[2].plot(time_axis, price, color='green')
-    # ax[2].set_ylabel('Price')
-    # ax[2].set_xlabel('Time')
-
-    # plt.show()
-
-    return pv_generation, demand, price
-
-
-class Environment():
-    def __init__(self):
-        print("Initialize Environment")
-        self.t = 0
-        self.price = 0
-        self.demand = 200
-        self.pv_generation = 5
-        self.n_points = 48
-        self.pv_generation, self.demand, self.price = instantiate_environment()
-
-    def step(self):
-        self.t += 1
-        if self.t >= self.n_points:
-            self.t = 0
-            return True
-
-        return False
-
-    def get_price(self):
-        return self.price[self.t]
-
-    def get_state(self):
-        return (self.t, self.pv_generation[self.t], self.demand[self.t], self.price[self.t])
-
-
-class BatteryAgent():
-
-    def __init__(self):
-        # print("Initialize Battery")
-        self.balance = 0
-        self.charge = 0
-        self.max_charge = 200
-        self.charge_ratio = 30
-        self.discharge_ratio = 25
-
-    def get_state(self, env):
-        state_env = env.get_state()
-        # print(*state_env,self.balance,self.charge)
-
-        return *state_env, self.balance, self.charge
-
-    def make_action(self, action_index, env):
-
-        price = env.get_price()
-        action = ["charge", "discharge", "do_nothing"][action_index]
-
-        if action == "charge":
-            if self.charge + self.charge_ratio > self.max_charge:
-                self.charge = self.max_charge
-                return -(self.max_charge - self.charge) * price
+            reward_mode = 'normal'
+            if reward_mode == 'return_to_go':
+                trajectory_i["rewards"].append(
+                    sum(trajectory_i["rewards"]) + state_s[1][0])
             else:
-                self.charge += self.charge_ratio
-                return -self.charge_ratio * price
+                trajectory_i["rewards"].append(state_s[1][0])
+            trajectory_i["dones"].append(state_s[1][1])
 
-        elif action == "discharge":
-            if self.charge - self.discharge_ratio < 0:
-                self.charge = 0
-                return self.charge * price
-            else:
-                self.charge -= self.discharge_ratio
-                return self.discharge_ratio * price
+        trajectory_i["observations"] = np.array(
+            trajectory_i["observations"])
+        trajectory_i["actions"] = np.array(trajectory_i["actions"])
+        trajectory_i["rewards"] = np.array(trajectory_i["rewards"])
+        trajectory_i["dones"] = np.array(trajectory_i["dones"])
+        # print(trajectory_i)
+        trajectory_list.append(trajectory_i)
+        
+        if counter % 10000 == 0:
+            print(f'counter:{counter}')
+            f = open(file_name, 'wb')
+            # source, destination
+            pickle.dump(trajectory_list, f)
+            f.close()
 
-        else:
-            return 0
 
-    def get_charge(self):
-        return self.charge
-
-
-env = Environment()
-battery = BatteryAgent()
-
-n_trajectories = 2
-generate_trajectories = True
-
-if generate_trajectories:
-    trajectory_list = []
-
-    for i in range(n_trajectories):
-        battery = BatteryAgent()
-        trajectory = {"observations": [],
-                      "actions": [], "rewards": [], "dones": []}
-
-        for t in range(env.n_points):
-            state = battery.get_state(env)
-            action_index = random.randint(0, 2)
-            reward = battery.make_action(action_index, env)
-
-            env.step()
-
-            action = np.zeros((1, 3))
-            action[0, action_index] = 1
-
-            trajectory["observations"].append(state)
-            trajectory["actions"].append((action[0]))
-            trajectory["rewards"].append(reward)
-            # trajectory["terminals"].append(0)
-            if t == env.n_points-1:
-                trajectory["dones"].append(1)
-            else:
-                trajectory["dones"].append(0)
-
-            battery.balance += float(reward)
-
-        print(i)
-        trajectory["observations"] = np.array(trajectory["observations"])
-        trajectory["actions"] = np.array(trajectory["actions"])
-        trajectory["rewards"] = np.array(trajectory["rewards"])
-        trajectory["dones"] = np.array(trajectory["dones"])
-        trajectory_list.append(trajectory)
-
-    print(len(trajectory_list))
-
-    f = open('trajectories', 'wb')
-
-    # source, destination
-    pickle.dump(trajectory_list, f)
-    f.close()
-
-dbfile = open('trajectories', 'rb')
-trajectory_list = pickle.load(dbfile)
-# for keys in trajectory_list:
-#     print(keys)
-print(len(trajectory_list))
+print("====================================")
 print(trajectory_list[0])
-dbfile.close()
+print(len(trajectory_list))
+print('Finished trajectory generating!')
+
+f = open(file_name, 'wb')
+# source, destination
+pickle.dump(trajectory_list, f)
+f.close()
+

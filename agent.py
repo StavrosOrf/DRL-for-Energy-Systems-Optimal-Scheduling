@@ -66,6 +66,23 @@ class AgentBase:
         self.state = state
         return trajectory
 
+    def explore_env_opt_actions(self, env, target_step, opt_actions, day, month, initial_soc):
+
+        trajectory = list()
+        state = env.reset(day, month, initial_soc)
+        for i in range(target_step):
+            action = np.asarray(opt_actions[i])
+            # print(f'Action: {action}')
+
+            state, next_state, reward, done, = env.step(action)
+
+            # print(f'State: {state}, reward: {reward}, done: {done}')
+
+            trajectory.append((state, (reward, done, *action)))
+            state = env.reset() if done else next_state
+        self.state = state
+        return trajectory
+
     @staticmethod
     def optim_update(optimizer, objective):
         optimizer.zero_grad()

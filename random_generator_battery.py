@@ -111,8 +111,11 @@ class Battery():
     def SOC(self):
         return self.current_capacity
 
-    def reset(self):
-        self.current_capacity = np.random.uniform(0.2, 0.8)
+    def reset(self,initial_capacity=None):
+        if initial_capacity:
+            self.current_capacity = initial_capacity
+        else:
+            self.current_capacity = np.random.uniform(0.2, 0.8)
 
 
 class Grid():
@@ -175,12 +178,21 @@ class ESSEnv(gym.Env):
 
         return self.demand-self.grid.wp_gen-self.grid.pv_gen
 
-    def reset(self,):
-        self.month = np.random.randint(1, 13)  # here we choose 12 month
+    def reset(self, day=None, month=None, initial_soc=None):
 
-        self.day = np.random.randint(3, Constant.MONTHS_LEN[self.month-1]-1)
+        if month is not None:
+            self.month = month
+        else:
+            self.month = np.random.randint(1, 13)  # here we choose 12 month
+
+        if day is not None:
+            self.day = day
+        else:
+            self.day = np.random.randint(
+                3, Constant.MONTHS_LEN[self.month-1]-1)
+
         self.current_time = 0
-        self.battery.reset()
+        self.battery.reset(initial_soc)
         self.dg1.reset()
         self.dg2.reset()
         self.dg3.reset()

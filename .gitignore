@@ -14,3 +14,10 @@ DT/*
 AgentDDPG/*
 
 trajectories_rtg
+*.pt
+trajectories_opt
+trajectories_rtg
+*.pt
+model.pt
+optimal_trajectories
+trajectories_rtg
