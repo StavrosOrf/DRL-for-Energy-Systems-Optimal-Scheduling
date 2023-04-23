@@ -69,6 +69,9 @@ class Trainer:
             states, actions, rewards, masks=None, attention_mask=attention_mask, target_return=returns,
         )
 
+        print(f'states: {states}, actions: {actions}, rewards: {rewards}, masks: {dones}, attention_mask: {attention_mask}, returns: {returns}')
+        print(f'state_target: {state_target}, action_target: {action_target}, reward_target: {reward_target}')
+
         # note: currently indexing & masking is not fully correct
         loss = self.loss_fn(
             state_preds, action_preds, reward_preds,

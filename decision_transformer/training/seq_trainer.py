@@ -22,6 +22,7 @@ class SequenceTrainer(Trainer):
             None, action_preds, None,
             None, action_target, None,
         )
+        # loss = nn
 
         self.optimizer.zero_grad()
         loss.backward()

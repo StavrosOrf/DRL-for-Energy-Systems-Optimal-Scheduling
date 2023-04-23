@@ -48,7 +48,7 @@ def experiment(
     act_dim = 4
 
     # load dataset
-    dataset_path = f'optimal_trajectories'
+    dataset_path = f'optimal_trajectories.pkl'
     with open(dataset_path, 'rb') as f:
         trajectories = pickle.load(f)
 
@@ -258,8 +258,9 @@ def experiment(
             batch_size=batch_size,
             get_batch=get_batch,
             scheduler=scheduler,
-            loss_fn=lambda s_hat, a_hat, r_hat, s, a, r: torch.mean(
-                (a_hat - a)**2),
+            loss_fn=lambda s_hat, a_hat, r_hat, s, a, r: 
+            torch.mean(abs(a_hat - a)),
+            # torch.mean((a_hat - a)**2),
             eval_fns=evaluate_one_episode,
         )
     elif model_type == 'bc':
