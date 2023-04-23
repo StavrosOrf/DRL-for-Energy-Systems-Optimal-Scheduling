@@ -15,13 +15,13 @@ generate_trajectories = False
 MONTHS_LEN = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
 
 trajectory_list = []
-trajectories_number = 100000
+trajectories_number = 1000000
 generate_optimal_trajectories = True
 
 if generate_optimal_trajectories:
-    file_name = 'optimal_trajectories'
+    file_name = 'optimal_trajectories.pkl'
 else:
-    file_name = 'random_trajectories'
+    file_name = 'random_trajectories.pkl'
 
 args = Arguments()
 args.agent = AgentDDPG()

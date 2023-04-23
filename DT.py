@@ -48,7 +48,7 @@ def experiment(
     act_dim = 4
 
     # load dataset
-    dataset_path = f'trajectories'
+    dataset_path = f'optimal_trajectories'
     with open(dataset_path, 'rb') as f:
         trajectories = pickle.load(f)
 

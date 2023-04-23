@@ -49,6 +49,7 @@ class DecisionTransformer(TrajectoryModel):
         self.predict_action = nn.Sequential(
             *([nn.Linear(hidden_size, self.act_dim)] + ([nn.Tanh()] if action_tanh else []))
         )
+        self.actionSigmoid = nn.Sigmoid()
         self.predict_return = torch.nn.Linear(hidden_size, 1)
 
     def forward(self, states, actions, rewards, returns_to_go, timesteps, attention_mask=None):
@@ -97,6 +98,11 @@ class DecisionTransformer(TrajectoryModel):
         return_preds = self.predict_return(x[:,2])  # predict next return given state and action
         state_preds = self.predict_state(x[:,2])    # predict next state given state and action
         action_preds = self.predict_action(x[:,1])  # predict next action given state
+
+        # temp_action_array = action_preds[0][:].clone()
+
+        # for i,actions_i in enumerate(temp_action_array):                    
+        #     action_preds[0][i][1:] = self.actionSigmoid(actions_i[1:])
 
         return state_preds, action_preds, return_preds
 

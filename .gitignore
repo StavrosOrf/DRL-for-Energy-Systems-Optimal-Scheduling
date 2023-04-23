@@ -21,3 +21,4 @@ trajectories_rtg
 model.pt
 optimal_trajectories
 trajectories_rtg
+*.pt

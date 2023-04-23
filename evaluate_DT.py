@@ -1,6 +1,5 @@
 import os
 import pickle
-import gym
 import time
 import torch
 import torch.nn as nn
@@ -9,6 +8,8 @@ import numpy.random as rd
 from torch.nn.modules import loss
 from random_generator_battery import ESSEnv
 import pandas as pd
+from tqdm import tqdm
+import math
 
 from tools import Arguments, test_one_episode_DT, ReplayBuffer, optimization_base_result
 from agent import AgentDDPG
@@ -30,27 +31,82 @@ def update_buffer(_trajectory):
     return _steps, _r_exp
 
 
-def evaluate_one_episode(model=None,eval_times = 30):
+def generate_best_solutions():
+    MONTHS_LEN = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
 
-    ratios = []
+    solutions_list = []
+    solutions_number = 10000
 
-    for i in range(eval_times):
-        args = Arguments()
-        agent_name = "DT"
-        args.env = ESSEnv()
-        args.cwd = agent_name
-        # agent.act.load_state_dict(torch.load(act_save_path))
-        # print('parameters have been reload and test')
-        record = test_one_episode_DT(args.env, "cpu", model)
+    file_name = 'eval_solutions.pkl'
+
+    args = Arguments()
+    args.agent = AgentDDPG()
+    args.env = ESSEnv()
+
+    args.init_before_training(if_main=True)
+    '''init agent and environment'''
+    agent = args.agent
+    env = args.env
+    agent.init(
+        args.net_dim, env.state_space.shape[0], env.action_space.shape[0], args.learning_rate, args.if_per_or_gae)
+    agent.state = env.reset()
+
+    for counter in tqdm(range(solutions_number)):
+
+        month = np.random.randint(1, 13)
+        day = np.random.randint(1, MONTHS_LEN[month-1]-1)
+        initial_soc = round(np.random.uniform(0.2, 0.8), 2)
+        # print(f'month:{month}, day:{day}, initial_soc:{initial_soc}')
+
+        base_result = optimization_base_result(
+            env, month, day, initial_soc)
+
+        total_cost = base_result['step_cost'].sum()
+        total_unbalance = abs(
+            base_result['load'].sum() - base_result['netload'].sum())
+
+        # print(base_result['step_cost'].sum())
+        # print(base_result['load'].sum() - base_result['netload'].sum())
+        # print(base_result)
+        solution = {'month': month, 'day': day, 'initial_soc': initial_soc,
+                    'total_unbalance': total_unbalance, 'total_operation_cost': total_cost}
+        solutions_list.append(solution)
+
+    f = open(file_name, 'wb')
+    pickle.dump(solutions_list, f)
+    f.close()
+    print('solutions have been generated and saved')
+    print(solutions_list)
+
+
+def evaluate_one_episode(model=None, eval_times=100, use_best_solutions=True):
+
+    ratios_cost = []
+    ratios_unbalance = []
+
+    if use_best_solutions:
+        dataset_path = f'eval_solutions.pkl'
+        with open(dataset_path, 'rb') as f:
+            best_solutions = pickle.load(f)
+    
+    args = Arguments()
+    agent_name = "DT"
+    args.env = ESSEnv()
+    args.cwd = agent_name
+
+    for i in tqdm(range(eval_times)):        
+
+        record = test_one_episode_DT(
+            args.env, device="cuda", model_init=model, month=best_solutions[i]['month'], day=best_solutions[i]['day'], initial_soc=best_solutions[i]['initial_soc'])
         # print(record['information'])
         eval_data = pd.DataFrame(record['information'])
         eval_data.columns = ['time_step', 'price', 'netload', 'action', 'real_action',
-                            'soc', 'battery', 'gen1', 'gen2', 'gen3', 'unbalance', 'operation_cost']
+                             'soc', 'battery', 'gen1', 'gen2', 'gen3', 'unbalance', 'operation_cost']
         eval_data.to_csv(f'{args.cwd}/eval_data.csv', index=False)
         # print(eval_data)
 
         '''compare with pyomo data and results'''
-        if args.compare_with_pyomo:
+        if not use_best_solutions:
             month = record['init_info'][0][0]
             day = record['init_info'][0][1]
             initial_soc = record['init_info'][0][3]
@@ -58,36 +114,32 @@ def evaluate_one_episode(model=None,eval_times = 30):
             base_result = optimization_base_result(
                 args.env, month, day, initial_soc)
             # print(base_result)
+            ratio = sum(eval_data['operation_cost']) / \
+                sum(base_result['step_cost'])
+            ratio_unbalance = sum(
+                eval_data['unbalance']) / abs(base_result['netload'].sum()-base_result['load'].sum())
+        else:
+            ratio = sum(eval_data['operation_cost']) / \
+                best_solutions[i]['total_operation_cost']
+            ratio_unbalance = sum(
+                eval_data['unbalance']) / best_solutions[i]['total_unbalance']
 
-        if args.save_test_data:
-            test_data_save_path = f'{args.cwd}/test_data.pkl'
-            with open(test_data_save_path, 'wb') as tf:
-                pickle.dump(record, tf)
+        ratios_cost.append(ratio)
+        ratios_unbalance.append(ratio_unbalance)
 
-        args.plot_on = False
-        if args.plot_on:
-            from plotDRL import PlotArgs, make_dir, plot_evaluation_information, plot_optimization_result
-            plot_args = PlotArgs()
-            plot_args.feature_change = ''
-            args.cwd = agent_name
-            plot_dir = make_dir(args.cwd, plot_args.feature_change)
-            plot_optimization_result(base_result, plot_dir)
-            plot_evaluation_information(args.cwd + '/'+'test_data.pkl', plot_dir)
+    ratios_cost = np.array(ratios_cost)
+    ratios_unbalance = np.array(ratios_unbalance)
 
-        '''compare the different cost get from pyomo and DT'''
-        ratio = sum(eval_data['operation_cost'])/sum(base_result['step_cost'])
-        ratio_unbalance = sum(eval_data['unbalance'])/sum(base_result['step_cost'])
-        # print(sum(eval_data['operation_cost']), sum(eval_data['unbalance']))
-        # print(sum(base_result['step_cost']), sum(base_result['step_cost']))
-        ratios.append(ratio)
-        
-    print(ratios)
-    ratios = np.array(ratios)
-    return {"ratio": ratios.mean()}
-    # return {"ratio": ratios.mean(), "ratio_unbalance": ratio_unbalance, "unbalance": sum(eval_data['unbalance']), "operation_cost": sum(eval_data['operation_cost']), "base_cost": sum(base_result['step_cost'])}
+    return {"ratio": ratios_cost.mean(),"ratio_cost_std": ratios_cost.std(), "ratio_cost_median": np.median(ratios_cost),
+            "ratio_unbalance": ratios_unbalance.mean(), "ratio_unbalance_std": ratios_unbalance.std(), "ratio_unbalance_median": np.median(ratios_unbalance)}
+    
 
 
 if __name__ == '__main__':
+
+    # generate_best_solutions()
+    print(evaluate_one_episode(eval_times=30, use_best_solutions=True))
+    exit(0)
 
     args = Arguments()
     '''here record real unbalance'''
@@ -153,7 +205,7 @@ if __name__ == '__main__':
             # print(record['information'])
             eval_data = pd.DataFrame(record['information'])
             eval_data.columns = ['time_step', 'price', 'netload', 'action', 'real_action',
-                                'soc', 'battery', 'gen1', 'gen2', 'gen3', 'unbalance', 'operation_cost']
+                                 'soc', 'battery', 'gen1', 'gen2', 'gen3', 'unbalance', 'operation_cost']
             eval_data.to_csv(f'{args.cwd}/eval_data.csv', index=False)
             # print(eval_data)
         if args.save_test_data:
@@ -167,7 +219,8 @@ if __name__ == '__main__':
             day = record['init_info'][0][1]
             initial_soc = record['init_info'][0][3]
             # print(initial_soc)
-            base_result = optimization_base_result(env, month, day, initial_soc)
+            base_result = optimization_base_result(
+                env, month, day, initial_soc)
             print(base_result)
 
         args.plot_on = True
@@ -186,10 +239,8 @@ if __name__ == '__main__':
         # print(sum(base_result['step_cost']))
         print(ration)
         ratios.append(ration)
-     
+
     ratios = np.array(ratios)
     print('============================')
     print(ratios)
     print(ratios.mean())
-    
-    

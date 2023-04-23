@@ -239,8 +239,7 @@ def test_one_episode(env, act, device):
               'reward': record_reward, 'cost': record_cost, 'unbalance': record_unbalance, 'record_output': record_output}
     return record
 
-
-def test_one_episode_DT(env, device, model=None):
+def test_one_episode_DT(env, device, model_init=None, month=None, day=None, initial_soc=None):
     '''to get evaluate information, here record the unblance of after taking action'''
     record_state = []
     record_action = []
@@ -250,61 +249,16 @@ def test_one_episode_DT(env, device, model=None):
     record_unbalance = []
     # [time price, netload,action,real action, output*4,soc,unbalance(exchange+penalty)]
     record_system_info = []
-
     record_init_info = []  # should include month,day,time,intial soc,initial
-
-    # Decision Transfmer requires a different approach
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--env', type=str, default='hopper')
-    # medium, medium-replay, medium-expert, expert
-    parser.add_argument('--dataset', type=str, default='medium')
-    # normal for standard setting, delayed for sparse
-    parser.add_argument('--mode', type=str, default='normal')
-    parser.add_argument('--K', type=int, default=24)
-    parser.add_argument('--pct_traj', type=float, default=1.)
-    parser.add_argument('--batch_size', type=int, default=100)
-    # dt for decision transformer, bc for behavior cloning
-    parser.add_argument('--model_type', type=str, default='dt')
-    parser.add_argument('--embed_dim', type=int, default=256)
-    parser.add_argument('--n_layer', type=int, default=12)
-    parser.add_argument('--n_head', type=int, default=8)
-    parser.add_argument('--activation_function', type=str, default='relu')
-    parser.add_argument('--dropout', type=float, default=0.2)
-    parser.add_argument('--learning_rate', '-lr', type=float, default=1e-4)
-    parser.add_argument('--weight_decay', '-wd', type=float, default=1e-4)
-    parser.add_argument('--warmup_steps', type=int, default=10000)
-    parser.add_argument('--num_eval_episodes', type=int, default=1)
-    parser.add_argument('--max_iters', type=int, default=500)
-    parser.add_argument('--num_steps_per_iter', type=int, default=50)
-    parser.add_argument('--device', type=str, default='cuda')
-    parser.add_argument('--log_to_wandb', '-w', type=bool, default=True)
-
-    args = parser.parse_args()
-    variant = vars(args)
-
-    max_ep_len = 48
     state_dim = 7
     act_dim = 4
-    K = variant['K']
-
-    model = DecisionTransformer(
-        state_dim=state_dim,
-        act_dim=act_dim,
-        max_length=K,
-        max_ep_len=max_ep_len,
-        hidden_size=variant['embed_dim'],
-        n_layer=variant['n_layer'],
-        n_head=variant['n_head'],
-        n_inner=4*variant['embed_dim'],
-        activation_function=variant['activation_function'],
-        n_positions=1024,
-        resid_pdrop=variant['dropout'],
-        attn_pdrop=variant['dropout'],
-    )
-    if model == None:
+   
+    if model_init == None:
         print("Loading model...")
-        model = torch.load("model.pt", map_location=torch.device('cpu'))
-
+        model = torch.load("model.pt", map_location=torch.device(device))
+    else:
+        model = model_init
+     
     # we keep all the histories on the device
     # note that the latest action and reward will be "padding"
 
@@ -318,7 +272,11 @@ def test_one_episode_DT(env, device, model=None):
     timesteps = torch.tensor(0, device=device, dtype=torch.long).reshape(1, 1)
 
     env.TRAIN = False
-    state = env.reset()
+
+    if month != None:
+        state = env.reset(month=month, day=day, initial_soc=initial_soc)
+    else:
+        state = env.reset()
 
     states = torch.from_numpy(state).reshape(
         1, state_dim).to(device=device, dtype=torch.float32)
@@ -376,7 +334,7 @@ def test_one_episode_DT(env, device, model=None):
         record_unbalance.append(env.unbalance)
         state = next_state
 
-    print(actions)
+    # print(actions)
     record_system_info[-1][7:10] = [env.final_step_outputs[0],
                                     env.final_step_outputs[1], env.final_step_outputs[2]]
     # add information of last step soc
