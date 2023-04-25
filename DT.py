@@ -268,6 +268,7 @@ def experiment(
             scheduler=scheduler,
             loss_fn=lambda s_hat, a_hat, r_hat, s, a, r: torch.mean(
               (r_hat - r)**2),
+
             eval_fns=evaluate_one_episode,
         )
     elif model_type == 'bc':

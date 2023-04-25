@@ -102,9 +102,6 @@ def evaluate_one_episode(model=None, eval_times=100, use_best_solutions=True):
         eval_data = pd.DataFrame(record['information'])
         eval_data.columns = ['time_step', 'price', 'netload', 'action', 'real_action',
                              'soc', 'battery', 'gen1', 'gen2', 'gen3', 'unbalance', 'operation_cost']
-        #eval_data.to_csv(f'{args.cwd}/eval_data.csv', index=False)
-        # print(eval_data)
-
         '''compare with pyomo data and results'''
         if not use_best_solutions:
             month = record['init_info'][0][0]
