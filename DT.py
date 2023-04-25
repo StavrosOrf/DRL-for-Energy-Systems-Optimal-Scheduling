@@ -7,6 +7,7 @@ import pickle
 import random
 import sys
 from icecream import ic
+import datetime
 
 from decision_transformer.evaluation.evaluate_episodes import evaluate_episode, evaluate_episode_rtg
 from decision_transformer.models.decision_transformer import DecisionTransformer
@@ -48,9 +49,12 @@ def experiment(
     act_dim = 4
 
     # load dataset
-    dataset_path = f'optimal_trajectories'
+    dataset_path = f'optimal_trajectories.pkl'
     with open(dataset_path, 'rb') as f:
         trajectories = pickle.load(f)
+    
+    for i in range(len(trajectories)):
+        trajectories[i]['rewards'] += 10
 
     # save all path information into separate lists
     mode = variant.get('mode', 'normal')
@@ -101,7 +105,7 @@ def experiment(
 
     # used to reweight sampling so we sample according to timesteps instead of trajectories
     p_sample = traj_lens[sorted_inds] / sum(traj_lens[sorted_inds])
-
+    ic(p_sample)
     def get_batch(batch_size=256, max_len=K):
         batch_inds = np.random.choice(
             np.arange(num_trajectories),
@@ -114,6 +118,8 @@ def experiment(
         for i in range(batch_size):
             traj = trajectories[int(sorted_inds[batch_inds[i]])]
             si = random.randint(0, traj['rewards'].shape[0] - 1)
+            # ic(si)
+            # ic(traj['rewards'].shape[0])
 
             # get sequences from dataset
             s.append(traj['observations']
@@ -121,6 +127,7 @@ def experiment(
             a.append(traj['actions'][si:si + max_len].reshape(1, -1, act_dim))
             r.append(traj['rewards'][si:si + max_len].reshape(1, -1, 1))
             if 'terminals' in traj:
+                exit(1)
                 d.append(traj['terminals'][si:si + max_len].reshape(1, -1))
             else:
                 d.append(traj['dones'][si:si + max_len].reshape(1, -1))
@@ -135,6 +142,7 @@ def experiment(
 
             # padding and state + reward normalization
             tlen = s[-1].shape[1]
+            # ic(tlen)
             s[-1] = np.concatenate([np.zeros((1, max_len -
                                    tlen, state_dim)), s[-1]], axis=1)
             s[-1] = (s[-1] - state_mean) / state_std
@@ -156,11 +164,11 @@ def experiment(
         a = torch.from_numpy(np.concatenate(a, axis=0)).to(
             dtype=torch.float32, device=device)
         r = torch.from_numpy(np.concatenate(r, axis=0)).to(
-            dtype=torch.float32, device=device)
+            dtype=torch.float32, device=device)*1000
         d = torch.from_numpy(np.concatenate(d, axis=0)).to(
             dtype=torch.long, device=device)
         rtg = torch.from_numpy(np.concatenate(rtg, axis=0)).to(
-            dtype=torch.float32, device=device)
+            dtype=torch.float32, device=device)*1000
         timesteps = torch.from_numpy(np.concatenate(timesteps, axis=0)).to(
             dtype=torch.long, device=device)
         mask = torch.from_numpy(np.concatenate(mask, axis=0)).to(device=device)
@@ -259,7 +267,7 @@ def experiment(
             get_batch=get_batch,
             scheduler=scheduler,
             loss_fn=lambda s_hat, a_hat, r_hat, s, a, r: torch.mean(
-                (a_hat - a)**2),
+              (r_hat - r)**2),
             eval_fns=evaluate_one_episode,
         )
     elif model_type == 'bc':
@@ -300,6 +308,15 @@ def experiment(
             if log_to_wandb:
                 wandb.log(outputs)
 
+            #save dictionary outputs to a file and append each time
+            #set the file_name to the curret date and time
+            file_name = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+            with open('file_name', 'a') as f:
+                f.write(str(outputs))
+            f.close()   
+            
+
+            
             if error > cur_error:
                 torch.save(model, "model.pt")
                 error = cur_error
@@ -315,7 +332,6 @@ def experiment(
     # # for k, v in outputs.items():
     # #     logs[f'evaluation/{k}'] = v
 
-
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--env', type=str, default='hopper')
@@ -325,15 +341,15 @@ if __name__ == '__main__':
     parser.add_argument('--mode', type=str, default='normal')
     parser.add_argument('--K', type=int, default=24)
     parser.add_argument('--pct_traj', type=float, default=1.)
-    parser.add_argument('--batch_size', type=int, default=256)
+    parser.add_argument('--batch_size', type=int, default=1024)
     # dt for decision transformer, bc for behavior cloning
     parser.add_argument('--model_type', type=str, default='dt')
-    parser.add_argument('--embed_dim', type=int, default=512)
-    parser.add_argument('--n_layer', type=int, default=8)
-    parser.add_argument('--n_head', type=int, default=8)
+    parser.add_argument('--embed_dim', type=int, default=256)
+    parser.add_argument('--n_layer', type=int, default=3)
+    parser.add_argument('--n_head', type=int, default=4)
     parser.add_argument('--activation_function', type=str, default='relu')
-    parser.add_argument('--dropout', type=float, default=0.2)
-    parser.add_argument('--learning_rate', '-lr', type=float, default=1e-4)
+    parser.add_argument('--dropout', type=float, default=0.4)
+    parser.add_argument('--learning_rate', '-lr', type=float, default=1e-3)
     parser.add_argument('--weight_decay', '-wd', type=float, default=1e-4)
     parser.add_argument('--warmup_steps', type=int, default=10000)
     parser.add_argument('--num_eval_episodes', type=int, default=1)
@@ -341,7 +357,6 @@ if __name__ == '__main__':
     parser.add_argument('--num_steps_per_iter', type=int, default=50)
     parser.add_argument('--device', type=str, default='cuda')
     parser.add_argument('--log_to_wandb', '-w', type=bool, default=True)
-
     args = parser.parse_args()
 
     experiment('gym-experiment', variant=vars(args))
