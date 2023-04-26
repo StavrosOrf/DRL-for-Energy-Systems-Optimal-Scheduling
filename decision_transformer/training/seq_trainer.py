@@ -24,16 +24,16 @@ class SequenceTrainer(Trainer):
         action_target = action_target.reshape(-1,
                                               act_dim)[attention_mask.reshape(-1) > 0]
 
-        loss = self.loss_fn(
-            None, None, reward_preds,
-            None, None, reward_target,
-        )
+        # loss = self.loss_fn(
+        #     None, None, reward_preds,
+        #     None, None, reward_target,
+        # )
         # loss = nn
 
-        # loss = self.loss_fn(
-        #     None, action_preds, reward_preds,
-        #     None, action_target, reward_target,
-        # )
+        loss = self.loss_fn(
+            None, action_preds, None,
+            None, action_target, None,
+        )
 
         # ic(action_preds, action_target)
 

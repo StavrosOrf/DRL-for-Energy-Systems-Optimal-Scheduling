@@ -44,8 +44,8 @@ class AgentBase:
         # states = torch.as_tensor((state,), dtype=torch.float32, device=self.device)
         # action = self.act(states)[0]
         # action = (action + torch.randn_like(action) * self.explore_noise).clamp(-1, 1)
-        action = torch.rand(4, dtype=torch.float32, device=self.device)
-        action[0] = torch.FloatTensor(1).uniform_(-1, 1)
+        # action = torch.rand(4, dtype=torch.float32, device=self.device)
+        action = torch.FloatTensor(4).uniform_(-1, 1)
         # print(action)
         return action.detach().cpu().numpy()
 

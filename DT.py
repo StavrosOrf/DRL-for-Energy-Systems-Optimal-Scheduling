@@ -1,11 +1,11 @@
 import numpy as np
 import torch
 import wandb
+import os
 
 import argparse
 import pickle
 import random
-import sys
 from icecream import ic
 import datetime
 
@@ -45,16 +45,19 @@ def experiment(
     env_targets = [18000]  # evaluation conditioning targets
     scale = 1.  # normalization for rewards/returns
 
-    state_dim = 7
+    state_dim = 9
     act_dim = 4
 
     # load dataset
     dataset_path = f'optimal_trajectories.pkl'
+    dataset_path = f'random_trajectories.pkl'
     with open(dataset_path, 'rb') as f:
         trajectories = pickle.load(f)
-    
-    for i in range(len(trajectories)):
-        trajectories[i]['rewards'] += 10
+
+    trajectories = trajectories[:440000]
+
+    # for i in range(len(trajectories)):
+    #     trajectories[i]['rewards'] += 10
 
     # save all path information into separate lists
     mode = variant.get('mode', 'normal')
@@ -106,6 +109,7 @@ def experiment(
     # used to reweight sampling so we sample according to timesteps instead of trajectories
     p_sample = traj_lens[sorted_inds] / sum(traj_lens[sorted_inds])
     ic(p_sample)
+
     def get_batch(batch_size=256, max_len=K):
         batch_inds = np.random.choice(
             np.arange(num_trajectories),
@@ -164,15 +168,15 @@ def experiment(
         a = torch.from_numpy(np.concatenate(a, axis=0)).to(
             dtype=torch.float32, device=device)
         r = torch.from_numpy(np.concatenate(r, axis=0)).to(
-            dtype=torch.float32, device=device)*1000
+            dtype=torch.float32, device=device)
         d = torch.from_numpy(np.concatenate(d, axis=0)).to(
             dtype=torch.long, device=device)
         rtg = torch.from_numpy(np.concatenate(rtg, axis=0)).to(
-            dtype=torch.float32, device=device)*1000
+            dtype=torch.float32, device=device)
         timesteps = torch.from_numpy(np.concatenate(timesteps, axis=0)).to(
             dtype=torch.long, device=device)
         mask = torch.from_numpy(np.concatenate(mask, axis=0)).to(device=device)
-        
+
         # ic(s, a, r, d, rtg, timesteps, mask)
         # exit()
         return s, a, r, d, rtg, timesteps, mask
@@ -249,6 +253,7 @@ def experiment(
     model = model.to(device=device)
 
     warmup_steps = variant['warmup_steps']
+
     optimizer = torch.optim.AdamW(
         model.parameters(),
         lr=variant['learning_rate'],
@@ -258,6 +263,9 @@ def experiment(
         optimizer,
         lambda steps: min((steps+1)/warmup_steps, 1)
     )
+    num_steps_per_iter = int(len(traj_lens) / batch_size)
+    # scheduler = torch.optim.lr_scheduler.OneCycleLR(
+    #     optimizer, max_lr=0.01, steps_per_epoch=num_steps_per_iter, epochs=args.max_iters)
 
     if model_type == 'dt':
         trainer = SequenceTrainer(
@@ -267,7 +275,7 @@ def experiment(
             get_batch=get_batch,
             scheduler=scheduler,
             loss_fn=lambda s_hat, a_hat, r_hat, s, a, r: torch.mean(
-              (r_hat - r)**2),
+                (a_hat - a)**2),
 
             eval_fns=evaluate_one_episode,
         )
@@ -296,12 +304,15 @@ def experiment(
     error = 100000
     best_ratio = 10000
 
-    num_steps_per_iter = int(len(traj_lens) / batch_size)
-
     if Train:
+        # Create folder Results if it does not exist
+        if not os.path.exists('Results'):
+            os.makedirs('Results')
+        file_name = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")+".txt"
+
         for iter in range(variant['max_iters']):
             outputs = trainer.train_iteration(
-                num_steps = num_steps_per_iter, iter_num=iter+1, print_logs=True)
+                num_steps=num_steps_per_iter, iter_num=iter+1, print_logs=True)
             # print(outputs)
             cur_error = (float(outputs["training/action_error"]))
             # final_balance = ( float(outputs["evaluation/target_18000_return_mean"]))
@@ -309,15 +320,12 @@ def experiment(
             if log_to_wandb:
                 wandb.log(outputs)
 
-            #save dictionary outputs to a file and append each time
-            #set the file_name to the curret date and time
-            file_name = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-            with open('file_name', 'a') as f:
-                f.write(str(outputs))
-            f.close()   
-            
+            # save dictionary outputs to a file and append each time
 
-            
+            with open("./Results/" + file_name, 'a') as f:
+                f.write(str(outputs))
+            f.close()
+
             if error > cur_error:
                 torch.save(model, "model.pt")
                 error = cur_error
@@ -333,6 +341,7 @@ def experiment(
     # # for k, v in outputs.items():
     # #     logs[f'evaluation/{k}'] = v
 
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--env', type=str, default='hopper')
@@ -342,10 +351,10 @@ if __name__ == '__main__':
     parser.add_argument('--mode', type=str, default='normal')
     parser.add_argument('--K', type=int, default=24)
     parser.add_argument('--pct_traj', type=float, default=1.)
-    parser.add_argument('--batch_size', type=int, default=1024)
+    parser.add_argument('--batch_size', type=int, default=2548)
     # dt for decision transformer, bc for behavior cloning
     parser.add_argument('--model_type', type=str, default='dt')
-    parser.add_argument('--embed_dim', type=int, default=256)
+    parser.add_argument('--embed_dim', type=int, default=128)
     parser.add_argument('--n_layer', type=int, default=3)
     parser.add_argument('--n_head', type=int, default=4)
     parser.add_argument('--activation_function', type=str, default='relu')

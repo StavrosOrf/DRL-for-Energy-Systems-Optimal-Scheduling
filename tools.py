@@ -250,7 +250,7 @@ def test_one_episode_DT(env, device, model_init=None, month=None, day=None, init
     # [time price, netload,action,real action, output*4,soc,unbalance(exchange+penalty)]
     record_system_info = []
     record_init_info = []  # should include month,day,time,intial soc,initial
-    state_dim = 7
+    state_dim = 9
     act_dim = 4
    
     if model_init == None:

@@ -111,7 +111,7 @@ class Battery():
     def SOC(self):
         return self.current_capacity
 
-    def reset(self,initial_capacity=None):
+    def reset(self, initial_capacity=None):
         if initial_capacity:
             self.current_capacity = initial_capacity
         else:
@@ -212,7 +212,7 @@ class ESSEnv(gym.Env):
             self.month, self.day, self.current_time)
         net_load = electricity_demand-pv_generation
         obs = np.concatenate((np.float32(time_step), np.float32(price), np.float32(soc), np.float32(
-            net_load), np.float32(dg1_output), np.float32(dg2_output), np.float32(dg3_output)), axis=None)
+            net_load), np.float32(dg1_output), np.float32(dg2_output), np.float32(dg3_output), np.float32(self.month), np.float32(self.day)), axis=None)
         return obs
 
     def step(self, action):  # state transition here current_obs--take_action--get reward-- get_finish--next_obs
@@ -265,7 +265,7 @@ class ESSEnv(gym.Env):
         dg3_cost = self.dg3._get_cost(self.dg3.current_output)
 
         reward -= (battery_cost+dg1_cost+dg2_cost+dg3_cost+excess_penalty +
-                   deficient_penalty-sell_benefit+buy_cost)/1e3
+                   deficient_penalty-sell_benefit+buy_cost) #/1e3
         self.operation_cost = battery_cost+dg1_cost+dg2_cost+dg3_cost + \
             buy_cost-sell_benefit+excess_penalty+deficient_penalty
         self.unbalance = unbalance

@@ -88,13 +88,13 @@ def evaluate_one_episode(model=None, eval_times=100, use_best_solutions=True):
         dataset_path = f'eval_solutions.pkl'
         with open(dataset_path, 'rb') as f:
             best_solutions = pickle.load(f)
-    
+
     args = Arguments()
     agent_name = "DT"
     args.env = ESSEnv()
     args.cwd = agent_name
 
-    for i in tqdm(range(eval_times)):        
+    for i in tqdm(range(eval_times)):
 
         record = test_one_episode_DT(
             args.env, device="cuda", model_init=model, month=best_solutions[i]['month'], day=best_solutions[i]['day'], initial_soc=best_solutions[i]['initial_soc'])
@@ -127,9 +127,10 @@ def evaluate_one_episode(model=None, eval_times=100, use_best_solutions=True):
     ratios_cost = np.array(ratios_cost)
     ratios_unbalance = np.array(ratios_unbalance)
 
-    return {"ratio": ratios_cost.mean(),"ratio_cost_std": ratios_cost.std(), "ratio_cost_median": np.median(ratios_cost),
-            "ratio_unbalance": ratios_unbalance.mean(), "ratio_unbalance_std": ratios_unbalance.std(), "ratio_unbalance_median": np.median(ratios_unbalance)}
-    
+    return {"ratio": ratios_cost.mean(), "ratio_cost_std": ratios_cost.std(), "ratio_cost_median": np.median(ratios_cost),
+            "ratio_unbalance": ratios_unbalance.mean(), "ratio_unbalance_std": ratios_unbalance.std(), "ratio_unbalance_median": np.median(ratios_unbalance),
+            "ratio_unbalance_max": ratios_unbalance.max(), "ratio_unbalance_min": ratios_unbalance.min(),
+            "ratio_cost_max": ratios_cost.max(), "ratio_cost_min": ratios_cost.min()}
 
 
 if __name__ == '__main__':
