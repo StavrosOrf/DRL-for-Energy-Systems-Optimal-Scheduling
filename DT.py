@@ -45,16 +45,16 @@ def experiment(
     env_targets = [18000]  # evaluation conditioning targets
     scale = 1.  # normalization for rewards/returns
 
-    state_dim = 9
+    state_dim = 7
     act_dim = 4
 
     # load dataset
     dataset_path = f'optimal_trajectories.pkl'
-    dataset_path = f'random_trajectories.pkl'
+    # dataset_path = f'random_trajectories.pkl'
     with open(dataset_path, 'rb') as f:
         trajectories = pickle.load(f)
 
-    trajectories = trajectories[:440000]
+    trajectories = trajectories[:40000]
 
     # for i in range(len(trajectories)):
     #     trajectories[i]['rewards'] += 10

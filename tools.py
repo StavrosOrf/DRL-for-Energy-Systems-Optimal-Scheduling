@@ -250,7 +250,7 @@ def test_one_episode_DT(env, device, model_init=None, month=None, day=None, init
     # [time price, netload,action,real action, output*4,soc,unbalance(exchange+penalty)]
     record_system_info = []
     record_init_info = []  # should include month,day,time,intial soc,initial
-    state_dim = 9
+    state_dim = 7
     act_dim = 4
    
     if model_init == None:
@@ -265,7 +265,7 @@ def test_one_episode_DT(env, device, model_init=None, month=None, day=None, init
     actions = torch.zeros((0, act_dim), device=device, dtype=torch.float32)
     rewards = torch.zeros(0, device=device, dtype=torch.float32)
 
-    target_return = 0
+    target_return = 1
     ep_return = target_return
     target_return = torch.tensor(
         ep_return, device=device, dtype=torch.float32).reshape(1, 1)
@@ -317,10 +317,11 @@ def test_one_episode_DT(env, device, model_init=None, month=None, day=None, init
         real_action = action
         state, next_state, reward, done = env.step(action)
 
-        pred_return = target_return[0, -1] - (reward/1)
+        # pred_return = target_return[0, -1] - (reward/1)
+        pred_return = target_return[0, -1] + (reward/1)
         target_return = torch.cat(
             [target_return, pred_return.reshape(1, 1)], dim=1)
-
+        # print(f'i {i} current target return is {target_return}')
         timesteps = torch.cat([timesteps, torch.ones(
             (1, 1), device=device, dtype=torch.long) * (i+1)], dim=1)
 
@@ -333,6 +334,7 @@ def test_one_episode_DT(env, device, model_init=None, month=None, day=None, init
         record_output.append(env.current_output)
         record_unbalance.append(env.unbalance)
         state = next_state
+        
 
     # print(actions)
     record_system_info[-1][7:10] = [env.final_step_outputs[0],

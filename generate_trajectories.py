@@ -16,10 +16,10 @@ MONTHS_LEN = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
 
 trajectory_list = []
 trajectories_number = 1000000
-generate_optimal_trajectories = False
+generate_optimal_trajectories = True
 
 if generate_optimal_trajectories:
-    file_name = 'optimal_trajectories.pkl'
+    file_name = 'optimal_trajectories_new.pkl'
 else:
     file_name = 'random_trajectories.pkl'
 

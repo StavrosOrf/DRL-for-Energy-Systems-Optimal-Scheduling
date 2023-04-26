@@ -211,8 +211,14 @@ class ESSEnv(gym.Env):
         price = self.data_manager.get_price_data(
             self.month, self.day, self.current_time)
         net_load = electricity_demand-pv_generation
-        obs = np.concatenate((np.float32(time_step), np.float32(price), np.float32(soc), np.float32(
-            net_load), np.float32(dg1_output), np.float32(dg2_output), np.float32(dg3_output), np.float32(self.month), np.float32(self.day)), axis=None)
+
+        state_dim = 9
+        if state_dim == 7:
+            obs = np.concatenate((np.float32(time_step), np.float32(price), np.float32(soc), np.float32(
+                net_load), np.float32(dg1_output), np.float32(dg2_output), np.float32(dg3_output)), axis=None)
+        elif state_dim == 9:
+            obs = np.concatenate((np.float32(time_step), np.float32(price), np.float32(soc), np.float32(
+                net_load), np.float32(dg1_output), np.float32(dg2_output), np.float32(dg3_output), np.float32(self.month), np.float32(self.day)), axis=None)
         return obs
 
     def step(self, action):  # state transition here current_obs--take_action--get reward-- get_finish--next_obs

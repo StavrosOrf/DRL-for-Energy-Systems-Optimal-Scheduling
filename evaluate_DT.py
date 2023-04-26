@@ -98,7 +98,7 @@ def evaluate_one_episode(model=None, eval_times=100, use_best_solutions=True):
 
         record = test_one_episode_DT(
             args.env, device="cuda", model_init=model, month=best_solutions[i]['month'], day=best_solutions[i]['day'], initial_soc=best_solutions[i]['initial_soc'])
-        # print(record['information'])
+        # exit()
         eval_data = pd.DataFrame(record['information'])
         eval_data.columns = ['time_step', 'price', 'netload', 'action', 'real_action',
                              'soc', 'battery', 'gen1', 'gen2', 'gen3', 'unbalance', 'operation_cost']
