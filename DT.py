@@ -45,20 +45,29 @@ def experiment(
     env_targets = [18000]  # evaluation conditioning targets
     scale = 1.  # normalization for rewards/returns
 
-    state_dim = 7
+    state_dim = 9
     act_dim = 4
 
     # load dataset
-    dataset_path = f'optimal_trajectories.pkl'
-    # dataset_path = f'random_trajectories.pkl'
+    dataset_path = f'optimal_trajectories_new.pkl'
+    dataset_path = f'random_trajectories.pkl'
     with open(dataset_path, 'rb') as f:
         trajectories = pickle.load(f)
 
-    trajectories = trajectories[:40000]
+    dataset_path = f'optimal_trajectories_new.pkl'
+    with open(dataset_path, 'rb') as f:
+        trajectories2 = pickle.load(f)
 
-    # for i in range(len(trajectories)):
-    #     trajectories[i]['rewards'] += 10
+    # trajectories = trajectories + trajectories2
+    trajectories = trajectories2 #[:40000] #+ trajectories2[:40000]
 
+    for i in range(len(trajectories)):
+        # print(trajectories[i]['actions'])
+        trajectories[i]['actions'] = 1 / \
+            (1 + np.exp(-trajectories[i]['actions']))
+        # print(trajectories[i]['actions'])
+
+    # exit()
     # save all path information into separate lists
     mode = variant.get('mode', 'normal')
     # mode = 'delayed'
@@ -151,7 +160,9 @@ def experiment(
                                    tlen, state_dim)), s[-1]], axis=1)
             s[-1] = (s[-1] - state_mean) / state_std
             a[-1] = np.concatenate([np.ones((1, max_len -
-                                   tlen, act_dim)) * -10., a[-1]], axis=1)
+                                   tlen, act_dim)) * 0., a[-1]], axis=1)
+            # a[-1] = np.concatenate([np.ones((1, max_len -
+                                #    tlen, act_dim)) * -10., a[-1]], axis=1)
             r[-1] = np.concatenate([np.zeros((1, max_len -
                                    tlen, 1)), r[-1]], axis=1)
             d[-1] = np.concatenate([np.ones((1, max_len - tlen))
@@ -276,7 +287,6 @@ def experiment(
             scheduler=scheduler,
             loss_fn=lambda s_hat, a_hat, r_hat, s, a, r: torch.mean(
                 (a_hat - a)**2),
-
             eval_fns=evaluate_one_episode,
         )
     elif model_type == 'bc':
@@ -303,6 +313,8 @@ def experiment(
     Train = True
     error = 100000
     best_ratio = 10000
+    best_unbalanced_ratio = 10000
+    best_ratio = 10000
 
     if Train:
         # Create folder Results if it does not exist
@@ -312,9 +324,12 @@ def experiment(
 
         for iter in range(variant['max_iters']):
             outputs = trainer.train_iteration(
-                num_steps=num_steps_per_iter, iter_num=iter+1, print_logs=True)
+                num_steps=num_steps_per_iter, iter_num=iter+1, print_logs=True, state_mean=torch.tensor(state_mean).to(device), state_std=torch.tensor(state_std).to(device))
             # print(outputs)
             cur_error = (float(outputs["training/action_error"]))
+            cur_ratio = (float(outputs["evaluation/ratio"]))
+            cur_unbalanced_ratio = (
+                float(outputs["evaluation/ratio_unbalance"]))
             # final_balance = ( float(outputs["evaluation/target_18000_return_mean"]))
             # exit()
             if log_to_wandb:
@@ -329,6 +344,13 @@ def experiment(
             if error > cur_error:
                 torch.save(model, "model.pt")
                 error = cur_error
+
+            if best_ratio > cur_ratio:
+                torch.save(model, "model_ratio.pt")
+                best_ratio = cur_ratio
+            if best_unbalanced_ratio > cur_unbalanced_ratio:
+                torch.save(model, "model_unscaled_ratio.pt")
+                best_unbalanced_ratio = cur_unbalanced_ratio
 
             print("Minimum error: ", error)
 
@@ -351,14 +373,14 @@ if __name__ == '__main__':
     parser.add_argument('--mode', type=str, default='normal')
     parser.add_argument('--K', type=int, default=24)
     parser.add_argument('--pct_traj', type=float, default=1.)
-    parser.add_argument('--batch_size', type=int, default=2548)
+    parser.add_argument('--batch_size', type=int, default=128)
     # dt for decision transformer, bc for behavior cloning
     parser.add_argument('--model_type', type=str, default='dt')
-    parser.add_argument('--embed_dim', type=int, default=128)
-    parser.add_argument('--n_layer', type=int, default=3)
-    parser.add_argument('--n_head', type=int, default=4)
+    parser.add_argument('--embed_dim', type=int, default=1024)  # 128
+    parser.add_argument('--n_layer', type=int, default=9)  # 3
+    parser.add_argument('--n_head', type=int, default=8)  # 4
     parser.add_argument('--activation_function', type=str, default='relu')
-    parser.add_argument('--dropout', type=float, default=0.4)
+    parser.add_argument('--dropout', type=float, default=0.2)
     parser.add_argument('--learning_rate', '-lr', type=float, default=1e-3)
     parser.add_argument('--weight_decay', '-wd', type=float, default=1e-4)
     parser.add_argument('--warmup_steps', type=int, default=10000)

@@ -1,5 +1,6 @@
 import numpy as np
 import torch
+import torch.nn as nn
 
 from tqdm import tqdm
 
@@ -13,14 +14,15 @@ class Trainer:
         self.optimizer = optimizer
         self.batch_size = batch_size
         self.get_batch = get_batch
-        self.loss_fn = loss_fn
+        self.loss_fn = loss_fn # nn.MSELoss()
         self.scheduler = scheduler
         self.eval_fns = [] if eval_fns is None else eval_fns
         self.diagnostics = dict()
 
         self.start_time = time.time()
 
-    def train_iteration(self, num_steps, iter_num=0, print_logs=False):
+    def train_iteration(self, num_steps, iter_num=0, print_logs=False,state_mean=None,
+                         state_std=None):
 
         train_losses = []
         logs = dict()
@@ -40,7 +42,7 @@ class Trainer:
 
         self.model.eval()
         
-        outputs = self.eval_fns(self.model)
+        outputs = self.eval_fns(self.model,state_mean, state_std)
         for k, v in outputs.items():
             logs[f'evaluation/{k}'] = v
         

@@ -28,12 +28,14 @@ class SequenceTrainer(Trainer):
         #     None, None, reward_preds,
         #     None, None, reward_target,
         # )
-        # loss = nn
+        # loss = self.loss_fn(action_preds, action_target)
 
         loss = self.loss_fn(
             None, action_preds, None,
             None, action_target, None,
         )
+
+
 
         # ic(action_preds, action_target)
 

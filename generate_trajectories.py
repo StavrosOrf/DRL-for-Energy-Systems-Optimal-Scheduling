@@ -15,20 +15,19 @@ generate_trajectories = False
 MONTHS_LEN = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
 
 trajectory_list = []
-trajectories_number = 1000000
-generate_optimal_trajectories = True
+trajectories_number = 10000000
+generate_optimal_trajectories = False
 
 if generate_optimal_trajectories:
     file_name = 'optimal_trajectories_new.pkl'
 else:
-    file_name = 'random_trajectories.pkl'
+    file_name = 'random_trajectories_new.pkl'
 
 args = Arguments()
 args.agent = AgentDDPG()
 agent_name = f'{args.agent.__class__.__name__}'
 args.agent.cri_target = True
 args.env = ESSEnv()
-# creat lists of lists/or creat a long list?
 
 args.init_before_training(if_main=True)
 '''init agent and environment'''
@@ -119,7 +118,7 @@ for counter in tqdm(range(trajectories_number)):
         # print(trajectory_i)
         trajectory_list.append(trajectory_i)
         
-        if counter % 10000 == 0:
+        if counter % 1000000 == 0:
             print(f'counter:{counter}')
             f = open(file_name, 'wb')
             # source, destination

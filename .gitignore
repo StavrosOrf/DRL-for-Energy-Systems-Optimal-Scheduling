@@ -22,3 +22,5 @@ model.pt
 optimal_trajectories
 trajectories_rtg
 *.pt
+*.txt
+Results/

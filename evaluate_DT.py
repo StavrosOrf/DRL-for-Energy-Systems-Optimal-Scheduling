@@ -79,7 +79,8 @@ def generate_best_solutions():
     print(solutions_list)
 
 
-def evaluate_one_episode(model=None, eval_times=100, use_best_solutions=True):
+def evaluate_one_episode(model=None, state_mean=None,
+                         state_std=None, eval_times=100, use_best_solutions=True):
 
     ratios_cost = []
     ratios_unbalance = []
@@ -95,9 +96,11 @@ def evaluate_one_episode(model=None, eval_times=100, use_best_solutions=True):
     args.cwd = agent_name
 
     for i in tqdm(range(eval_times)):
+        # for i in tqdm(range(1000)):
 
         record = test_one_episode_DT(
-            args.env, device="cuda", model_init=model, month=best_solutions[i]['month'], day=best_solutions[i]['day'], initial_soc=best_solutions[i]['initial_soc'])
+            args.env, device="cuda", model_init=model, month=best_solutions[i]['month'], day=best_solutions[i]['day'], initial_soc=best_solutions[i]['initial_soc'], state_mean=state_mean,
+            state_std=state_std)
         # exit()
         eval_data = pd.DataFrame(record['information'])
         eval_data.columns = ['time_step', 'price', 'netload', 'action', 'real_action',
@@ -116,16 +119,24 @@ def evaluate_one_episode(model=None, eval_times=100, use_best_solutions=True):
             ratio_unbalance = sum(
                 eval_data['unbalance']) / abs(base_result['netload'].sum()-base_result['load'].sum())
         else:
-            ratio = sum(eval_data['operation_cost']) / \
-                best_solutions[i]['total_operation_cost']
-            ratio_unbalance = sum(
-                eval_data['unbalance']) / best_solutions[i]['total_unbalance']
+            # print(f"total_operation_cost: {best_solutions[i]['total_operation_cost']} ")
+            # print(f"total_unbalance: {best_solutions[i]['total_unbalance']} ")
+            # print(f"sum(eval_data['operation_cost']): {sum(eval_data['operation_cost'])} ")
+            # print(f"sum(eval_data['unbalance']): {sum(eval_data['unbalance'])} ")
+
+            ratio = abs(sum(eval_data['operation_cost']) /
+                        best_solutions[i]['total_operation_cost'])
+            ratio_unbalance = abs(sum(
+                eval_data['unbalance']) / best_solutions[i]['total_unbalance'])
 
         ratios_cost.append(ratio)
         ratios_unbalance.append(ratio_unbalance)
 
     ratios_cost = np.array(ratios_cost)
     ratios_unbalance = np.array(ratios_unbalance)
+
+    # print(
+    #     f"index: {ratios_cost.argmin()}, max: {ratios_cost.max()}, min: {ratios_cost.min()}")
 
     return {"ratio": ratios_cost.mean(), "ratio_cost_std": ratios_cost.std(), "ratio_cost_median": np.median(ratios_cost),
             "ratio_unbalance": ratios_unbalance.mean(), "ratio_unbalance_std": ratios_unbalance.std(), "ratio_unbalance_median": np.median(ratios_unbalance),
@@ -136,7 +147,19 @@ def evaluate_one_episode(model=None, eval_times=100, use_best_solutions=True):
 if __name__ == '__main__':
 
     # generate_best_solutions()
-    print(evaluate_one_episode(eval_times=30, use_best_solutions=True))
+    results = evaluate_one_episode(eval_times=1000, use_best_solutions=True)
+
+    print(results)
+
+    # pickle results
+    with open('results.pkl', 'wb') as f:
+        pickle.dump(results, f)
+
+    # load results
+    # with open('results.pkl', 'rb') as f:
+    #     results = pickle.load(f)
+
+    # results = pd.DataFrame(results)
     exit(0)
 
     args = Arguments()
