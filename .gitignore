@@ -24,3 +24,5 @@ trajectories_rtg
 *.pt
 *.txt
 Results/
+file_name
+*.pkl

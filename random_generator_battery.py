@@ -96,7 +96,7 @@ class Battery():
         self.efficiency = parameters['efficiency']
 
     def step(self, action_battery):
-        energy = action_battery*self.max_charge
+        energy = action_battery*self.max_charge        
         updated_capacity = max(self.min_soc, min(
             self.max_soc, (self.current_capacity*self.capacity+energy)/self.capacity))
         # if charge, positive, if discharge, negative

@@ -239,8 +239,9 @@ def test_one_episode(env, act, device):
               'reward': record_reward, 'cost': record_cost, 'unbalance': record_unbalance, 'record_output': record_output}
     return record
 
-def test_one_episode_DT(env, device, model_init=None, month=None, day=None, initial_soc=None,state_mean=None,
-                         state_std=None):
+
+def test_one_episode_DT(env, device, model_init=None, month=None, day=None, initial_soc=None, simple_model=False, state_mean=None,
+                        state_std=None):
     '''to get evaluate information, here record the unblance of after taking action'''
     record_state = []
     record_action = []
@@ -253,13 +254,13 @@ def test_one_episode_DT(env, device, model_init=None, month=None, day=None, init
     record_init_info = []  # should include month,day,time,intial soc,initial
     state_dim = 9
     act_dim = 4
-   
+
     if model_init == None:
         print("Loading model...")
         model = torch.load("model_ratio.pt", map_location=torch.device(device))
     else:
         model = model_init
-     
+
     # we keep all the histories on the device
     # note that the latest action and reward will be "padding"
 
@@ -301,28 +302,32 @@ def test_one_episode_DT(env, device, model_init=None, month=None, day=None, init
             (1, act_dim), device=device)], dim=0)
         rewards = torch.cat([rewards, torch.zeros(1, device=device)])
         # print(actions,rewards,states,target_return,timesteps)
-        
-        if state_mean.any():
-            # print(states)
-            # print((states-state_mean)/state_std)
-            a_tensor = model.get_action(
-                (states.to(dtype=torch.float32) - state_mean) / state_std,
-                actions.to(dtype=torch.float32),
-                rewards.to(dtype=torch.float32),
-                target_return.to(dtype=torch.float32),
-                timesteps.to(dtype=torch.long),
-            )
-        else:
-            a_tensor = model.get_action(
-                (states.to(dtype=torch.float32) - 0) / 1,
-                actions.to(dtype=torch.float32),
-                rewards.to(dtype=torch.float32),
-                target_return.to(dtype=torch.float32),
-                timesteps.to(dtype=torch.long),
-            )
-        # a_tensor = torch.zeros(4)        
-        
-        a_tensor = a_tensor * 2 - 1              
+
+        if simple_model:
+            # print(cur_state)
+            a_tensor = model(cur_state)[0]
+        else:    
+            if state_mean.any():
+                # print(states)
+                # print((states-state_mean)/state_std)
+                a_tensor = model.get_action(
+                    (states.to(dtype=torch.float32) - state_mean) / state_std,
+                    actions.to(dtype=torch.float32),
+                    rewards.to(dtype=torch.float32),
+                    target_return.to(dtype=torch.float32),
+                    timesteps.to(dtype=torch.long),
+                )
+            else:
+                a_tensor = model.get_action(
+                    (states.to(dtype=torch.float32) - 0) / 1,
+                    actions.to(dtype=torch.float32),
+                    rewards.to(dtype=torch.float32),
+                    target_return.to(dtype=torch.float32),
+                    timesteps.to(dtype=torch.long),
+                )
+        # a_tensor = torch.zeros(4)
+
+        # a_tensor = a_tensor * 2 - 1
 
         actions[-1] = a_tensor
         # print(a_tensor)
@@ -350,8 +355,8 @@ def test_one_episode_DT(env, device, model_init=None, month=None, day=None, init
         record_output.append(env.current_output)
         record_unbalance.append(env.unbalance)
         state = next_state
-        
-    print(actions)
+
+    # print(actions)
     record_system_info[-1][7:10] = [env.final_step_outputs[0],
                                     env.final_step_outputs[1], env.final_step_outputs[2]]
     # add information of last step soc

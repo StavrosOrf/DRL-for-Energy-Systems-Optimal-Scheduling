@@ -80,7 +80,7 @@ def generate_best_solutions():
 
 
 def evaluate_one_episode(model=None, state_mean=None,
-                         state_std=None, eval_times=100, use_best_solutions=True):
+                         state_std=None, simple_model=False, eval_times=100, use_best_solutions=True):
 
     ratios_cost = []
     ratios_unbalance = []
@@ -95,11 +95,12 @@ def evaluate_one_episode(model=None, state_mean=None,
     args.env = ESSEnv()
     args.cwd = agent_name
 
-    for i in tqdm(range(eval_times)):
+    # for i in tqdm(range(eval_times)):
+    for i in range(eval_times):
         # for i in tqdm(range(1000)):
 
         record = test_one_episode_DT(
-            args.env, device="cuda", model_init=model, month=best_solutions[i]['month'], day=best_solutions[i]['day'], initial_soc=best_solutions[i]['initial_soc'], state_mean=state_mean,
+            args.env, device="cuda", model_init=model, simple_model=simple_model, month=best_solutions[i]['month'], day=best_solutions[i]['day'], initial_soc=best_solutions[i]['initial_soc'], state_mean=state_mean,
             state_std=state_std)
         # exit()
         eval_data = pd.DataFrame(record['information'])
