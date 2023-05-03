@@ -80,7 +80,7 @@ def generate_best_solutions():
 
 
 def evaluate_one_episode(model=None, state_mean=None,
-                         state_std=None, simple_model=False, eval_times=100, use_best_solutions=True):
+                         state_std=None, simple_model=False, eval_times=100, use_best_solutions=True, results_in = None):
 
     ratios_cost = []
     ratios_unbalance = []
@@ -139,10 +139,16 @@ def evaluate_one_episode(model=None, state_mean=None,
     # print(
     #     f"index: {ratios_cost.argmin()}, max: {ratios_cost.max()}, min: {ratios_cost.min()}")
 
-    return {"ratio": ratios_cost.mean(), "ratio_cost_std": ratios_cost.std(), "ratio_cost_median": np.median(ratios_cost),
+
+    results = {"ratio": ratios_cost.mean(), "ratio_cost_std": ratios_cost.std(), "ratio_cost_median": np.median(ratios_cost),
             "ratio_unbalance": ratios_unbalance.mean(), "ratio_unbalance_std": ratios_unbalance.std(), "ratio_unbalance_median": np.median(ratios_unbalance),
             "ratio_unbalance_max": ratios_unbalance.max(), "ratio_unbalance_min": ratios_unbalance.min(),
             "ratio_cost_max": ratios_cost.max(), "ratio_cost_min": ratios_cost.min()}
+    
+    if results_in is not None:
+        results_in.append(results['ratio'])
+        # print(results_in)
+    return results
 
 
 if __name__ == '__main__':

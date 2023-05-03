@@ -14,6 +14,8 @@ import argparse
 import torch
 import torch.nn as nn
 from tqdm import tqdm
+import concurrent.futures
+import time
 
 from evaluate_DT import evaluate_one_episode
 
@@ -29,8 +31,8 @@ class NN(nn.Module):
         self.relu = nn.ReLU()
 
     def forward(self, x):
-        x = self.relu(self.fc1(x))
-        x = self.relu(self.fc2(x))
+        x = self.fc1(x)
+        x = self.fc2(x)
         x = self.tanh(self.fc3(x))
         return x
 
@@ -46,13 +48,33 @@ action_dim = 4
 state_dim = 9
 
 hidden_dim = 64
-population_size = 5
+population_size = 100
 epochs = 100
-sigma = 0.1
-lr = 0.001
+sigma = 0.3
+lr = 0.01
+number_of_threads = 10
 
 
-def ES(num_iterations, population_size, sigma, learning_rate, render=False):
+def evaluator(model):
+    result = []
+    gen_samples = []
+
+    sigma = 0.3
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
+    for param in model.parameters():
+        sample = torch.normal(mean=0, std=torch.ones(
+            param.shape, device=device))
+        param.data = param.data + sigma * sample
+        gen_samples.append(sample)
+
+    # thread = Thread(target=evaluate_one_episode, args=(model, True,))
+    result = evaluate_one_episode(model, None, None, True, 100, True)
+
+    return result, gen_samples
+
+
+def ES(num_iterations, population_size, sigma, learning_rate,number_of_threads):
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     # initialize a list of size population size of NNs with random weights
@@ -79,26 +101,22 @@ def ES(num_iterations, population_size, sigma, learning_rate, render=False):
 
         for i in tqdm(range(population_size)):
 
-            gen_samples = []
-            for param in population[i].parameters():
-                sample = torch.normal(mean=0, std=torch.ones(
-                    param.shape, device=device))
-                param.data = param.data + sigma * sample
-                gen_samples.append(sample)
+            for p in population:
+                p.load_state_dict(base_model.state_dict())
+        start = time.time()
+        with concurrent.futures.ThreadPoolExecutor(max_workers=number_of_threads) as executor:
+            pool = {executor.submit(
+                evaluator, model): model for model in population}
+            for thread in concurrent.futures.as_completed(pool):              
+                samples.append(thread.result()[1])
+                results.append(thread.result()[0]['ratio'])
 
-            samples.append(gen_samples)
-            results.append(evaluate_one_episode(
-                population[i], simple_model=True)['ratio'])
-
+        # print(results)
         print(
-            f'iter {iter} mean {np.mean(results)}, Best: {np.max(results)}, Worst: {np.min(results)}')
-        # print(samples)
-        # scalar x to torch tensor
+            f'iter {iter} timer {(time.time()-start):.01f} mean {np.mean(results)}, Best: {np.max(results)}, Worst: {np.min(results)}')
+
         results = torch.tensor(results, device=device)
 
-        # generate a list with the ranking of each element in the results list
-        # e.g. [0, 1, 2, 3, 4] for population size 5
-        # print(results)
         ranking = torch.argsort(results, descending=True)
         # print(ranking)
         weights = [0]*population_size
@@ -113,10 +131,9 @@ def ES(num_iterations, population_size, sigma, learning_rate, render=False):
                 gradients[j] += torch.mul(samples[i][j], weights[i])
 
         for j, param in enumerate(base_model.parameters()):
-            param.data = param.data + learning_rate / \
-                (population_size * sigma) * gradients[j]
+            param.data = param.data + learning_rate * gradients[j]
 
 
 env = None
 ES(num_iterations=epochs, population_size=population_size,
-   sigma=sigma, learning_rate=lr, render=False)
+   sigma=sigma, learning_rate=lr,number_of_threads=number_of_threads)
