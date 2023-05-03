@@ -94,13 +94,13 @@ def evaluate_one_episode(model=None, state_mean=None,
     agent_name = "DT"
     args.env = ESSEnv()
     args.cwd = agent_name
-
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     # for i in tqdm(range(eval_times)):
     for i in range(eval_times):
         # for i in tqdm(range(1000)):
 
         record = test_one_episode_DT(
-            args.env, device="cuda", model_init=model, simple_model=simple_model, month=best_solutions[i]['month'], day=best_solutions[i]['day'], initial_soc=best_solutions[i]['initial_soc'], state_mean=state_mean,
+            args.env, device=device, model_init=model, simple_model=simple_model, month=best_solutions[i]['month'], day=best_solutions[i]['day'], initial_soc=best_solutions[i]['initial_soc'], state_mean=state_mean,
             state_std=state_std)
         # exit()
         eval_data = pd.DataFrame(record['information'])
