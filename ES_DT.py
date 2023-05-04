@@ -49,10 +49,10 @@ state_dim = 9
 
 hidden_dim = 64
 population_size = 100
-epochs = 100
+epochs = 500
 sigma = 0.3
 lr = 0.01
-number_of_threads = 10
+number_of_threads = 2
 
 
 def evaluator(model):
@@ -74,11 +74,13 @@ def evaluator(model):
     return result, gen_samples
 
 
-def ES(num_iterations, population_size, sigma, learning_rate,number_of_threads):
+def ES(num_iterations, population_size, sigma, learning_rate, number_of_threads):
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     # initialize a list of size population size of NNs with random weights
     population = []
+
+    best_ratio = 1000000
 
     base_model = NN(state_dim, hidden_dim, action_dim).to(device)
 
@@ -107,13 +109,17 @@ def ES(num_iterations, population_size, sigma, learning_rate,number_of_threads):
         with concurrent.futures.ThreadPoolExecutor(max_workers=number_of_threads) as executor:
             pool = {executor.submit(
                 evaluator, model): model for model in population}
-            for thread in concurrent.futures.as_completed(pool):              
+            for thread in concurrent.futures.as_completed(pool):
                 samples.append(thread.result()[1])
                 results.append(thread.result()[0]['ratio'])
 
         # print(results)
+        if best_ratio < np.min(results):
+            best_ratio = np.min(results)
+            torch.save(base_model.state_dict(), 'best_model.pt')
+
         print(
-            f'iter {iter} timer {(time.time()-start):.01f} mean {np.mean(results)}, Best: {np.max(results)}, Worst: {np.min(results)}')
+            f'iter {iter} timer {(time.time()-start):.01f} mean {np.mean(results)}, Max: {np.max(results)}, Min: {np.min(results)} \t best: {best_ratio}')
 
         results = torch.tensor(results, device=device)
 
@@ -122,7 +128,7 @@ def ES(num_iterations, population_size, sigma, learning_rate,number_of_threads):
         weights = [0]*population_size
         for i in range(population_size):
             weights[ranking[i]] = ((math.log(population_size + 0.5) -
-                                    math.log(population_size - i)) / denominator)
+                                    math.log(population_size - i)))  # / denominator)
         # print(weights)
 
         gradients = [z.detach().clone() for z in zeros]
@@ -136,4 +142,4 @@ def ES(num_iterations, population_size, sigma, learning_rate,number_of_threads):
 
 env = None
 ES(num_iterations=epochs, population_size=population_size,
-   sigma=sigma, learning_rate=lr,number_of_threads=number_of_threads)
+   sigma=sigma, learning_rate=lr, number_of_threads=number_of_threads)
