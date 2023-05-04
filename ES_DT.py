@@ -102,7 +102,6 @@ def ES(num_iterations, population_size, sigma, learning_rate, number_of_threads)
         samples = []
 
         for i in tqdm(range(population_size)):
-
             for p in population:
                 p.load_state_dict(base_model.state_dict())
         start = time.time()
@@ -114,8 +113,9 @@ def ES(num_iterations, population_size, sigma, learning_rate, number_of_threads)
                 results.append(thread.result()[0]['ratio'])
 
         # print(results)
-        if best_ratio < np.min(results):
+        if best_ratio > np.min(results):
             best_ratio = np.min(results)
+            print('saving best model')
             torch.save(base_model.state_dict(), 'best_model.pt')
 
         print(
