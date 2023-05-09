@@ -307,7 +307,7 @@ def test_one_episode_DT(env, device, model_init=None, month=None, day=None, init
             # print(cur_state)
             a_tensor = model(cur_state)[0]
         else:    
-            if state_mean.any():
+            if state_mean is not None:
                 # print(states)
                 # print((states-state_mean)/state_std)
                 a_tensor = model.get_action(

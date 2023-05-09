@@ -17,6 +17,7 @@ from tqdm import tqdm
 import concurrent.futures
 import time
 
+from decision_transformer.models.decision_transformer import DecisionTransformer
 from evaluate_DT import evaluate_one_episode
 
 
@@ -31,21 +32,16 @@ class NN(nn.Module):
         self.relu = nn.ReLU()
 
     def forward(self, x):
-        x = self.fc1(x)
-        x = self.fc2(x)
+        x = self.tanh(self.fc1(x))
+        x = self.tanh(self.fc2(x))
         x = self.tanh(self.fc3(x))
         return x
 
 
-# for many iterations do the following:
-#  1. sample a population of solutions
-# 2. evaluate the fitness of each solution
-# 3. update the mean and standard deviation of the population
-# 4. repeat
-# 5. return the best solution found
-# 6. plot the fitness of the best solution found at each iteration
 action_dim = 4
 state_dim = 9
+
+DECISION_TRANSFORMER = True
 
 hidden_dim = 64
 population_size = 100
@@ -54,12 +50,11 @@ sigma = 0.3
 lr = 0.01
 number_of_threads = 2
 
-
-def evaluator(model):
+def evaluator(model,DECISION_TRANSFORMER):
     result = []
     gen_samples = []
 
-    sigma = 0.3
+    sigma = 0.2
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
     for param in model.parameters():
@@ -69,20 +64,47 @@ def evaluator(model):
         gen_samples.append(sample)
 
     # thread = Thread(target=evaluate_one_episode, args=(model, True,))
-    result = evaluate_one_episode(model, None, None, True, 100, True)
+    result = evaluate_one_episode(model, None, None,  not DECISION_TRANSFORMER, 100, True)
 
     return result, gen_samples
 
 
-def ES(num_iterations, population_size, sigma, learning_rate, number_of_threads):
+def ES(num_iterations, population_size, sigma, learning_rate, number_of_threads, DECISION_TRANSFORMER):
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     # initialize a list of size population size of NNs with random weights
     population = []
 
     best_ratio = 1000000
+    state_dim = 9
+    act_dim = 4
+    K = 24
+    max_ep_len = 24
+    variant = {
+        'embed_dim': 128,
+        'n_layer': 4,
+        'n_head': 4,
+        'activation_function': 'relu',
+        'dropout': 0.1,
+    }
 
-    base_model = NN(state_dim, hidden_dim, action_dim).to(device)
+    if DECISION_TRANSFORMER:
+        base_model = DecisionTransformer(
+            state_dim=state_dim,
+            act_dim=act_dim,
+            max_length=K,
+            max_ep_len=max_ep_len,
+            hidden_size=variant['embed_dim'],
+            n_layer=variant['n_layer'],
+            n_head=variant['n_head'],
+            n_inner=4*variant['embed_dim'],
+            activation_function=variant['activation_function'],
+            n_positions=1024,
+            resid_pdrop=variant['dropout'],
+            attn_pdrop=variant['dropout'],
+        ).to(device)
+    else:
+        base_model = NN(state_dim, hidden_dim, action_dim).to(device)
 
     denominator = 0
     for i in range(population_size):
@@ -93,7 +115,25 @@ def ES(num_iterations, population_size, sigma, learning_rate, number_of_threads)
         zeros.append(torch.zeros(param.shape, device=device))
 
     for i in range(population_size):
-        model = NN(state_dim, hidden_dim, action_dim).to(device)
+
+        if DECISION_TRANSFORMER:
+            model = DecisionTransformer(
+                state_dim=state_dim,
+                act_dim=act_dim,
+                max_length=K,
+                max_ep_len=max_ep_len,
+                hidden_size=variant['embed_dim'],
+                n_layer=variant['n_layer'],
+                n_head=variant['n_head'],
+                n_inner=4*variant['embed_dim'],
+                activation_function=variant['activation_function'],
+                n_positions=1024,
+                resid_pdrop=variant['dropout'],
+                attn_pdrop=variant['dropout'],
+            ).to(device)
+        else:            
+            model = NN(state_dim, hidden_dim, action_dim).to(device)
+
         model.load_state_dict(base_model.state_dict())
         population.append(model)
 
@@ -107,7 +147,7 @@ def ES(num_iterations, population_size, sigma, learning_rate, number_of_threads)
         start = time.time()
         with concurrent.futures.ThreadPoolExecutor(max_workers=number_of_threads) as executor:
             pool = {executor.submit(
-                evaluator, model): model for model in population}
+                evaluator, model,DECISION_TRANSFORMER): model for model in population}
             for thread in concurrent.futures.as_completed(pool):
                 samples.append(thread.result()[1])
                 results.append(thread.result()[0]['ratio'])
@@ -140,6 +180,5 @@ def ES(num_iterations, population_size, sigma, learning_rate, number_of_threads)
             param.data = param.data + learning_rate * gradients[j]
 
 
-env = None
 ES(num_iterations=epochs, population_size=population_size,
-   sigma=sigma, learning_rate=lr, number_of_threads=number_of_threads)
+   sigma=sigma, learning_rate=lr, number_of_threads=number_of_threads, DECISION_TRANSFORMER=DECISION_TRANSFORMER)
